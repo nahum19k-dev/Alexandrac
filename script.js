@@ -26,6 +26,8 @@ document.addEventListener('DOMContentLoaded', function () {
     var camera = 0, cameraTarget = 0;
     var cameraFocus = { x: 0.5, y: 0.5 };
     var burstParticles = [];
+    var route = null;
+    var introTimer = null;
     var chapterTitles = ['Una coincidencia', 'Tu mirada', 'Lo que admiro de ti', 'Sin mirar el reloj', 'Pequeños recuerdos', 'Lo que sigue'];
     var letterSteps = [
         { html: '<div class="photo-container"><img src="WhatsApp%20Image%202026-11-08%20at%201.53.35%20PM.jpeg" alt="Alexandra" class="alexandra-photo"></div><p>Alexandra, hay personas que llegan a tu vida en los momentos más inesperados. Como en el trabajo, donde supuestamente estás concentrado en otras cosas, hasta que te cruzas con una mirada que te hace olvidar por un instante lo que estabas haciendo. Así me pasó contigo: sin darme cuenta, ya habías captado toda mi atención.</p>' },
@@ -125,15 +127,21 @@ document.addEventListener('DOMContentLoaded', function () {
             ctx.strokeStyle = tail; ctx.lineWidth = 1;
             ctx.beginPath(); ctx.moveTo(meteor.x - 90, meteor.y - 40); ctx.lineTo(meteor.x, meteor.y); ctx.stroke();
         }
-        if (state !== 'landing' && state !== 'ending') {
-            ctx.strokeStyle = 'rgba(219,195,151,0.28)';
-            ctx.lineWidth = 0.7;
-            ctx.beginPath();
-            for (var n = 1; n <= current && n < nodes.length; n++) {
-                ctx.moveTo(nodes[n-1].x * width, nodes[n-1].y * height);
-                ctx.lineTo(nodes[n].x * width, nodes[n].y * height);
+        // El recorrido es una estela de puntos pasajeros, nunca una línea fija.
+        if (route && !reducedMotion && state === 'exploring') {
+            route.age += dt;
+            var head = Math.min(route.age / 1.2, 1);
+            var fade = Math.max(0, 1 - Math.max(0, route.age - 1.2) / 0.8);
+            for (var n = 0; n < 18; n++) {
+                var along = head - n * 0.022;
+                if (along < 0) continue;
+                var px = (route.from.x + (route.to.x - route.from.x) * along) * width;
+                var py = (route.from.y + (route.to.y - route.from.y) * along) * height;
+                py -= Math.sin(along * Math.PI) * Math.min(height * 0.08, 50);
+                ctx.fillStyle = 'rgba(255,218,180,' + (1 - n / 18) * fade * 0.85 + ')';
+                ctx.beginPath(); ctx.arc(px, py, n === 0 ? 3.6 : 1.5, 0, Math.PI * 2); ctx.fill();
             }
-            ctx.stroke();
+            if (route.age >= 2) route = null;
         }
         if (state === 'ending') {
             finaleTime += dt;
@@ -212,7 +220,7 @@ document.addEventListener('DOMContentLoaded', function () {
             var el = document.createElement('button');
             el.className = 'constellation-node';
             el.setAttribute('aria-label', 'Leer ' + chapterTitles[index]);
-            el.innerHTML = '<span class="star-core" aria-hidden="true"></span>';
+            el.innerHTML = '<span class="star-dust" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span class="star-core" aria-hidden="true"></span>';
             el.style.left = pos[0] * 100 + '%'; el.style.top = pos[1] * 100 + '%';
             el.addEventListener('click', function () { openChapter(index); });
             container.appendChild(el);
@@ -222,7 +230,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
     function openChapter(index) {
         if (state !== 'exploring' || index !== current) return;
-        reading = index; state = 'entering'; updateNodes();
+        reading = index; state = 'entering'; route = null; updateNodes();
         guide.style.opacity = '0'; cameraTarget = 0.8;
         cameraFocus.x = nodes[index].x; cameraFocus.y = nodes[index].y;
         starTransition.style.left = nodes[index].x * 100 + '%';
@@ -231,13 +239,21 @@ document.addEventListener('DOMContentLoaded', function () {
         document.body.classList.add('is-entering');
         document.getElementById('chapter-title').textContent = chapterTitles[index];
         modalBody.innerHTML = letterSteps[index].html;
+        modalBody.querySelectorAll('p').forEach(function (paragraph, paragraphIndex) {
+            paragraph.style.setProperty('--paragraph-delay', (0.25 + paragraphIndex * 0.22) + 's');
+        });
         var photo = modalBody.querySelector('.alexandra-photo');
         var photoButton = null;
         if (photo) {
             photoButton = document.createElement('button');
             photoButton.className = 'photo-open';
             photoButton.setAttribute('aria-label', 'Ver foto completa de Alexandra');
-            photo.replaceWith(photoButton); photoButton.appendChild(photo);
+            photo.replaceWith(photoButton);
+            var photoFrame = document.createElement('span');
+            photoFrame.className = 'photo-frame'; photoFrame.appendChild(photo);
+            var photoCaption = document.createElement('span');
+            photoCaption.className = 'photo-caption'; photoCaption.textContent = 'Alexandra';
+            photoFrame.appendChild(photoCaption); photoButton.appendChild(photoFrame);
             var hint = document.createElement('span');
             hint.className = 'photo-hint'; hint.textContent = 'Toca para ver la foto';
             photoButton.appendChild(hint);
@@ -264,6 +280,7 @@ document.addEventListener('DOMContentLoaded', function () {
         setTimeout(function () {
             if (reading === letterSteps.length - 1) { startEnding(); return; }
             current = reading + 1; state = 'exploring'; updateNodes();
+            route = reducedMotion ? null : { from: nodes[reading], to: nodes[current], age: 0 };
             guide.textContent = 'Sigue la luz de la siguiente estrella'; guide.style.opacity = '1';
             nodes[current].el.focus({ preventScroll: true });
         }, reducedMotion ? 0 : 700);
@@ -285,7 +302,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (event.target === photoViewer) photoViewer.close();
     });
     function startEnding() {
-        state = 'ending'; finaleTime = 0; nameParticles = [];
+        state = 'ending'; finaleTime = 0; nameParticles = []; route = null;
         burstParticles = [];
         for (var k = 0; k < 130; k++) {
             burstParticles.push({ angle: Math.random() * Math.PI * 2,
@@ -306,7 +323,8 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
     function beginJourney() {
-        state = 'exploring'; current = 0; visited.clear();
+        clearTimeout(introTimer);
+        state = 'exploring'; current = 0; visited.clear(); route = null;
         finale.hidden = true; landing.hidden = true; landing.classList.remove('active');
         journey.hidden = false; journey.classList.add('active');
         document.body.classList.add('journey-started');
@@ -314,10 +332,18 @@ document.addEventListener('DOMContentLoaded', function () {
         guide.textContent = 'Toca la estrella que brilla para comenzar'; guide.style.opacity = '1';
         muteBtn.hidden = false; setupNodes();
         nodes[0].el.focus({ preventScroll: true });
+        if (!reducedMotion) {
+            for (var m = 0; m < 4; m++) {
+                meteors.push({ x: width * (0.05 + m * 0.22), y: -30 - m * 70, life: 1.8 + m * 0.2 });
+            }
+        }
     }
     document.getElementById('open-btn').addEventListener('click', function () {
         if (state !== 'landing') return;
-        beginJourney();
+        state = 'opening';
+        document.getElementById('open-btn').disabled = true;
+        landing.classList.add('opening');
+        introTimer = setTimeout(beginJourney, reducedMotion ? 0 : 900);
         music.volume = 0;
         music.play().catch(function () { updateAudio(); });
     });
@@ -326,7 +352,7 @@ document.addEventListener('DOMContentLoaded', function () {
         var start = performance.now();
         cancelAnimationFrame(audioFadeId);
         function fade(now) {
-            music.volume = Math.min((now - start) / 4500, 1) * 0.38;
+            music.volume = Math.max(0, Math.min((now - start) / 4500, 1)) * 0.38;
             if (now - start < 4500) audioFadeId = requestAnimationFrame(fade);
         }
         audioFadeId = requestAnimationFrame(fade);
