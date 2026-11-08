@@ -6,43 +6,60 @@
     <title>Para Alexandra &middot; Una constelaci&oacute;n para ti</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600;700&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
+    <div class="sky-atmosphere" aria-hidden="true"></div>
+    <canvas id="star-canvas" aria-hidden="true"></canvas>
+    <div class="film-vignette" aria-hidden="true"></div>
 
-    <div id="landing-screen" class="screen active">
-        <div class="landing-content">
-            <h1 class="title">Para Alexandra</h1>
-            <p class="subtitle">Una constelaci&oacute;n de pensamientos para ti</p>
-            <button id="open-btn" class="glow-on-hover">Comenzar el Viaje &#10024;</button>
-        </div>
-    </div>
-
-    <div id="constellation-screen" class="screen">
-        <div id="zoom-container" style="position:absolute;top:0;left:0;width:100%;height:100%;transition:transform 1.5s cubic-bezier(0.4, 0, 0.2, 1), opacity 1.5s ease;">
-            <canvas id="star-canvas" role="img" aria-label="Un cielo de estrellas que al final forma el nombre Alexandra"></canvas>
-            <div id="nodes-container"></div>
-            <div id="click-guide" class="click-guide">&#128072; Toca la estrella para leer</div>
-        </div>
-        <div class="music-control">
-            <button id="mute-btn">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
-            </button>
-        </div>
-        <div id="content-modal" class="hidden">
-            <div class="glass-card">
-                <div id="modal-body" class="letter-content"></div>
-                <button id="next-btn" class="next-btn">Siguiente &#127775;</button>
+    <main>
+        <section id="landing-screen" class="screen active" aria-labelledby="welcome-title">
+            <div class="landing-content">
+                <p class="eyebrow">Hay encuentros que merecen su propio cielo</p>
+                <span class="title-prelude">Para</span>
+                <h1 id="welcome-title" class="title">Alexandra</h1>
+                <span class="fine-line" aria-hidden="true"></span>
+                <p class="subtitle">Una constelaci&oacute;n de pensamientos para ti</p>
+                <button id="open-btn" class="primary-btn">Entrar en este cielo <span aria-hidden="true">&#8599;</span></button>
+                <p class="sound-note">A tu ritmo. Mejor con aud&iacute;fonos.</p>
             </div>
-        </div>
-    </div>
+            <span class="landing-footer" aria-hidden="true">Una mirada. El comienzo de algo bonito.</span>
+        </section>
 
-    <!-- Musica de fondo -->
-    <audio id="bg-music" loop preload="auto">
-        <source src="musica.mp3" type="audio/mpeg">
-    </audio>
-
+        <section id="constellation-screen" class="screen" aria-label="Una carta entre las estrellas" hidden>
+            <header class="journey-header">
+                <span class="journey-signature">Para Alexandra</span>
+                <span id="journey-progress">Una historia en seis estrellas</span>
+            </header>
+            <div id="nodes-container"></div>
+            <p id="click-guide" class="click-guide">Toca la estrella que brilla para comenzar</p>
+            <div id="content-modal" class="hidden" role="dialog" aria-modal="true" aria-labelledby="chapter-title" inert>
+                <article class="glass-card">
+                    <header class="chapter-header">
+                        <span id="chapter-number" class="eyebrow"></span>
+                        <h2 id="chapter-title"></h2>
+                    </header>
+                    <div id="modal-body" class="letter-content"></div>
+                    <footer class="chapter-footer">
+                        <span id="chapter-dots" class="chapter-dots" aria-hidden="true"></span>
+                        <button id="next-btn" class="next-btn">Seguir el hilo <span aria-hidden="true">&#8594;</span></button>
+                    </footer>
+                </article>
+            </div>
+            <div id="finale" class="finale" hidden>
+                <h2 class="sr-only">Alexandra</h2>
+                <p>Quiz&aacute; lo m&aacute;s bonito de coincidir contigo<br class="desktop-break"> todav&iacute;a est&eacute; por pasar.</p>
+                <button id="replay-btn" class="text-btn">Volver a recorrer las estrellas <span aria-hidden="true">&#8634;</span></button>
+            </div>
+        </section>
+    </main>
+    <button id="mute-btn" class="music-control" aria-label="Activar m&uacute;sica" aria-pressed="false" hidden>
+        <span class="sound-bars" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+        <span id="sound-label">Sonido</span>
+    </button>
+    <audio id="bg-music" loop preload="none"><source src="musica.mp3" type="audio/mpeg"></audio>
     <script src="script.js"></script>
 </body>
 </html>

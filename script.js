@@ -1,29 +1,28 @@
-document.addEventListener('DOMContentLoaded', function() {
-    var openBtn = document.getElementById('open-btn');
-    var landingScreen = document.getElementById('landing-screen');
-    var constellationScreen = document.getElementById('constellation-screen');
-    var muteBtn = document.getElementById('mute-btn');
-    var nodesContainer = document.getElementById('nodes-container');
+document.addEventListener('DOMContentLoaded', function () {
+    'use strict';
     var canvas = document.getElementById('star-canvas');
     var ctx = canvas.getContext('2d');
-    var contentModal = document.getElementById('content-modal');
+    var landing = document.getElementById('landing-screen');
+    var journey = document.getElementById('constellation-screen');
+    var modal = document.getElementById('content-modal');
+    var card = modal.querySelector('.glass-card');
     var modalBody = document.getElementById('modal-body');
     var nextBtn = document.getElementById('next-btn');
-    var bgMusic = document.getElementById('bg-music');
-    var zoomContainer = document.getElementById('zoom-container');
-
-    var isMuted = false;
-    var width = 0;
-    var height = 0;
-    var bgStars = [];
-    var shootingStars = [];
-    var constellationNodes = [];
-    var currentNodeIndex = 0;
-    var showAlexandraName = false;
-    var nameAlpha = 0;
-    var explosionParticles = [];
-    var explosionFlash = 0;
-
+    var guide = document.getElementById('click-guide');
+    var progress = document.getElementById('journey-progress');
+    var finale = document.getElementById('finale');
+    var music = document.getElementById('bg-music');
+    var muteBtn = document.getElementById('mute-btn');
+    var motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+    var reducedMotion = motionQuery.matches;
+    motionQuery.addEventListener('change', function (event) { reducedMotion = event.matches; });
+    var width, height, stars = [], nodes = [], meteors = [], nameParticles = [];
+    var pointer = { x: 0, y: 0, smoothX: 0, smoothY: 0 };
+    var state = 'landing', current = 0, reading = 0, visited = new Set();
+    var lastTime = 0, skyTime = 0, finaleTime = 0, nextMeteor = 9;
+    var frameId = null, audioFadeId = null, focusTimer = null;
+    var camera = 0, cameraTarget = 0;
+    var chapterTitles = ['Una coincidencia', 'Tu mirada', 'Lo que admiro de ti', 'Sin mirar el reloj', 'Pequeños recuerdos', 'Lo que sigue'];
     var letterSteps = [
         { html: '<div class="photo-container"><img src="WhatsApp%20Image%202026-11-08%20at%201.53.35%20PM.jpeg" alt="Alexandra" class="alexandra-photo"></div><p>Alexandra, hay personas que llegan a tu vida en los momentos más inesperados. Como en el trabajo, donde supuestamente estás concentrado en otras cosas, hasta que te cruzas con una mirada que te hace olvidar por un instante lo que estabas haciendo. Así me pasó contigo: sin darme cuenta, ya habías captado toda mi atención.</p>' },
         { html: '<p>Lo primero que noté fueron tus ojos. Hay algo en tu forma de mirar que me gusta, algo que hace que quiera quedarme un momento más cerca de ti. Al principio fue esa mirada; después, las ganas de conocer a la persona que había detrás.</p>' },
@@ -33,7 +32,6 @@ document.addEventListener('DOMContentLoaded', function() {
         { html: '<p>Quién iba a decir que, entre las cosas de todos los días en el trabajo, iba a encontrar una mirada como la tuya. Ahora hay conversaciones y pequeños momentos que le dan otro encanto a coincidir contigo, Alexandra.</p><p>Lo curioso es que todo empezó con algo tan sencillo como mirarnos.</p><p>Quizá lo más bonito de coincidir contigo todavía esté por pasar.</p>' }
     ];
 
-    // Cada letra se construye con segmentos para conservar el cierre de estrellas.
     var nameGlyphs = {
         A: [[[0,2],[0.5,0]], [[0.5,0],[1,2]], [[0.25,1],[0.75,1]]],
         L: [[[0,0],[0,2]], [[0,2],[1,2]]],
@@ -54,346 +52,227 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
+
+    function nameLayout() {
+        var scale = Math.min(width / (nameWidth + 2.5), height / 7, 60);
+        return { scale: scale, x: (width - nameWidth * scale) / 2, y: height * 0.43 - scale };
+    }
+
     function resize() {
-        var rect = canvas.getBoundingClientRect();
-        width = rect.width || window.innerWidth;
-        height = rect.height || window.innerHeight;
-        
-        var dpr = window.devicePixelRatio || 1;
-        canvas.width = width * dpr;
-        canvas.height = height * dpr;
+        width = window.innerWidth;
+        height = window.innerHeight;
+        var dpr = Math.min(window.devicePixelRatio || 1, 2);
+        canvas.width = Math.round(width * dpr);
+        canvas.height = Math.round(height * dpr);
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-        
-        initBgStars();
-    }
-    
-    var prevWidth = window.innerWidth;
-    var prevHeight = window.innerHeight;
-    
-    window.addEventListener('resize', function() {
-        var oldWidth = prevWidth || window.innerWidth;
-        var oldHeight = prevHeight || window.innerHeight;
-        resize();
-        
-        // Si ya hay estrellas, reposicionarlas proporcionalmente
-        if (constellationNodes && constellationNodes.length > 0 && currentNodeIndex !== -1) {
-            for (var i = 0; i < constellationNodes.length; i++) {
-                var node = constellationNodes[i];
-                node.x = (node.x / oldWidth) * width;
-                node.y = (node.y / oldHeight) * height;
-                node.el.style.left = node.x + "px";
-                node.el.style.top = node.y + "px";
+        if (!stars.length) {
+            for (var i = 0; i < 260; i++) {
+                var depth = Math.random();
+                stars.push({ x: Math.random(), y: Math.random(), depth: depth,
+                    r: 0.3 + depth * 1.25, phase: Math.random() * Math.PI * 2,
+                    speed: 0.25 + Math.random() * 0.65, warm: Math.random() > 0.78 });
             }
         }
-        prevWidth = width;
-        prevHeight = height;
-    });
-
-    function initBgStars() {
-        bgStars = [];
-        for (var i = 0; i < 180; i++) {
-            bgStars.push({
-                x: Math.random() * width,
-                y: Math.random() * height,
-                r: Math.random() * 1.5 + 0.3,
-                alpha: Math.random() * 0.6 + 0.3,
-                speed: Math.random() * 0.02 + 0.005
-            });
-        }
     }
+    window.addEventListener('resize', resize);
+    window.addEventListener('pointermove', function (event) {
+        pointer.x = event.clientX / width - 0.5;
+        pointer.y = event.clientY / height - 0.5;
+    }, { passive: true });
+    document.addEventListener('pointerleave', function () { pointer.x = pointer.y = 0; });
 
-    setInterval(function() {
-        if (Math.random() < 0.5) {
-            shootingStars.push({
-                x: Math.random() * width * 0.7,
-                y: Math.random() * height * 0.3,
-                len: Math.random() * 60 + 30,
-                spd: Math.random() * 5 + 4,
-                alpha: 1
-            });
-        }
-    }, 4000);
-
-    function draw() {
+    function draw(time) {
+        var dt = Math.min((time - (lastTime || time)) / 1000, 0.05);
+        lastTime = time;
+        skyTime += dt;
         ctx.clearRect(0, 0, width, height);
-        var i, s;
-        for (i = 0; i < bgStars.length; i++) {
-            s = bgStars[i];
-            s.alpha += (Math.random() - 0.5) * s.speed;
-            if (s.alpha < 0.15) s.alpha = 0.15;
-            if (s.alpha > 1) s.alpha = 1;
-            ctx.fillStyle = "rgba(255,255,255," + s.alpha + ")";
+        var ease = 1 - Math.exp(-dt * 3);
+        pointer.smoothX += ((reducedMotion ? 0 : pointer.x) - pointer.smoothX) * ease;
+        pointer.smoothY += ((reducedMotion ? 0 : pointer.y) - pointer.smoothY) * ease;
+        camera += ((reducedMotion ? 0 : cameraTarget) - camera) * ease;
+        stars.forEach(function (star) {
+            var drift = reducedMotion ? 0 : skyTime * (0.5 + star.depth * 1.2);
+            var x = ((star.x * width + drift) % (width + 40)) - 20;
+            var y = star.y * height;
+            x += pointer.smoothX * star.depth * 22 + (x - width / 2) * camera * star.depth;
+            y += pointer.smoothY * star.depth * 16 + (y - height / 2) * camera * star.depth;
+            var alpha = 0.22 + star.depth * 0.4 + (reducedMotion ? 0.1 : Math.sin(skyTime * star.speed + star.phase) * 0.16);
+            ctx.fillStyle = 'rgba(' + (star.warm ? '237,211,168,' : '215,228,246,') + alpha + ')';
+            if (star.depth > 0.9) {
+                ctx.shadowColor = star.warm ? '#e9cf9f' : '#bfd7ff';
+                ctx.shadowBlur = 7;
+            }
             ctx.beginPath();
-            ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+            ctx.arc(x, y, star.r, 0, Math.PI * 2);
             ctx.fill();
-        }
-
-        for (i = shootingStars.length - 1; i >= 0; i--) {
-            var ss = shootingStars[i];
-            ss.x += ss.spd;
-            ss.y += ss.spd * 0.6;
-            ss.alpha -= 0.012;
-            if (ss.alpha <= 0) { shootingStars.splice(i, 1); continue; }
-            var tx = ss.x - ss.len * 0.7;
-            var ty = ss.y - ss.len * 0.42;
-            var grad = ctx.createLinearGradient(tx, ty, ss.x, ss.y);
-            grad.addColorStop(0, "rgba(255,255,255,0)");
-            grad.addColorStop(1, "rgba(255,255,255," + ss.alpha + ")");
-            ctx.strokeStyle = grad;
-            ctx.lineWidth = 1.5;
-            ctx.beginPath();
-            ctx.moveTo(tx, ty);
-            ctx.lineTo(ss.x, ss.y);
-            ctx.stroke();
-        }
-
-        if (!showAlexandraName) {
-            if (currentNodeIndex > 0) {
-                ctx.strokeStyle = "rgba(255,215,0,0.15)";
-                ctx.lineWidth = 6;
-                ctx.beginPath();
-                for (i = 1; i <= currentNodeIndex && i < constellationNodes.length; i++) {
-                    ctx.moveTo(constellationNodes[i-1].x, constellationNodes[i-1].y);
-                    ctx.lineTo(constellationNodes[i].x, constellationNodes[i].y);
-                }
-                ctx.stroke();
-                ctx.strokeStyle = "rgba(255,215,0,0.7)";
-                ctx.lineWidth = 1.5;
-                ctx.beginPath();
-                for (i = 1; i <= currentNodeIndex && i < constellationNodes.length; i++) {
-                    ctx.moveTo(constellationNodes[i-1].x, constellationNodes[i-1].y);
-                    ctx.lineTo(constellationNodes[i].x, constellationNodes[i].y);
-                }
-                ctx.stroke();
-            }
-        } else {
-            if (nameAlpha < 1) nameAlpha += 0.006; // Un poco mas lento
-            var scale = Math.min(width / (nameWidth + 2), height / 6, 60);
-            var totalW = nameWidth * scale;
-            var sx = (width - totalW) / 2;
-            var sy = height / 2 - scale;
-
-            ctx.strokeStyle = "rgba(255,75,130," + (nameAlpha * 0.15) + ")";
-            ctx.lineWidth = 8;
-            ctx.beginPath();
-            for (i = 0; i < alexandraLines.length; i++) {
-                ctx.moveTo(sx + alexandraLines[i][0].x * scale, sy + alexandraLines[i][0].y * scale);
-                ctx.lineTo(sx + alexandraLines[i][1].x * scale, sy + alexandraLines[i][1].y * scale);
-            }
-            ctx.stroke();
-
-            ctx.strokeStyle = "rgba(255,75,130," + (nameAlpha * 0.8) + ")";
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            for (i = 0; i < alexandraLines.length; i++) {
-                ctx.moveTo(sx + alexandraLines[i][0].x * scale, sy + alexandraLines[i][0].y * scale);
-                ctx.lineTo(sx + alexandraLines[i][1].x * scale, sy + alexandraLines[i][1].y * scale);
-            }
-            ctx.stroke();
-
-            ctx.fillStyle = "rgba(255,255,255," + nameAlpha + ")";
-            for (i = 0; i < alexandraLines.length; i++) {
-                ctx.beginPath();
-                ctx.arc(sx + alexandraLines[i][0].x * scale, sy + alexandraLines[i][0].y * scale, 3, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.beginPath();
-                ctx.arc(sx + alexandraLines[i][1].x * scale, sy + alexandraLines[i][1].y * scale, 3, 0, Math.PI * 2);
-                ctx.fill();
-            }
-        }
-
-        // Renderizar Explosion
-        if (explosionFlash > 0) {
-            var rad = (1.2 - explosionFlash) * 500;
-            var grad = ctx.createRadialGradient(width/2, height/2, 0, width/2, height/2, rad);
-            grad.addColorStop(0, "rgba(255, 255, 255, " + explosionFlash + ")");
-            grad.addColorStop(0.3, "rgba(255, 75, 130, " + (explosionFlash * 0.8) + ")");
-            grad.addColorStop(1, "rgba(0, 0, 0, 0)");
-            ctx.fillStyle = grad;
-            ctx.beginPath();
-            ctx.arc(width/2, height/2, rad, 0, Math.PI * 2);
-            ctx.fill();
-            explosionFlash -= 0.025;
-        }
-
-        for (i = explosionParticles.length - 1; i >= 0; i--) {
-            var p = explosionParticles[i];
-            p.x += p.vx;
-            p.y += p.vy;
-            p.vx *= 0.94; // Friccion
-            p.vy *= 0.94;
-            p.alpha -= 0.015;
-            if (p.alpha <= 0) { explosionParticles.splice(i, 1); continue; }
-            
-            ctx.globalAlpha = p.alpha;
-            ctx.fillStyle = p.color;
-            ctx.beginPath();
-            ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-            ctx.fill();
-        }
-        ctx.globalAlpha = 1.0;
-
-        requestAnimationFrame(draw);
-    }
-
-    function setupConstellation() {
-        var px = width * 0.12;
-        var py = height * 0.15;
-        var uw = width - px * 2;
-        var uh = height - py * 2;
-        for (var i = 0; i < letterSteps.length; i++) {
-            var progress = i / (letterSteps.length - 1);
-            var x = px + (uw * progress);
-            var yp = (i % 2 === 0) ? 0.15 + Math.random() * 0.2 : 0.55 + Math.random() * 0.2;
-            var y = py + (uh * yp);
-            var div = document.createElement('div');
-            div.className = 'constellation-node';
-            div.style.left = x + "px";
-            div.style.top = y + "px";
-            (function(idx, posX, posY) {
-                div.addEventListener('click', function() {
-                    if (idx <= currentNodeIndex && !showAlexandraName) {
-                        if (idx === 0) {
-                            var guide = document.getElementById('click-guide');
-                            if (guide) guide.style.opacity = "0";
-                        }
-                        
-                        // Zoom 3D - Fade out to prevent ugly blob
-                        var ox = (posX / width) * 100;
-                        var oy = (posY / height) * 100;
-                        zoomContainer.style.transformOrigin = ox + "% " + oy + "%";
-                        zoomContainer.style.transform = "scale(6)";
-                        zoomContainer.style.opacity = "0"; 
-                        
-                        setTimeout(function() {
-                            showModal(idx);
-                        }, 800);
-                    }
-                });
-            })(i, x, y);
-            nodesContainer.appendChild(div);
-            constellationNodes.push({ x: x, y: y, el: div });
-        }
-        setTimeout(function() { 
-            revealNode(0);
-            var guide = document.getElementById('click-guide');
-            if (guide && constellationNodes[0]) {
-                guide.style.left = (constellationNodes[0].x + 25) + "px";
-                guide.style.top = (constellationNodes[0].y - 12) + "px";
-                guide.style.opacity = "1";
-            }
-        }, 1500); // Aparecer un ratito despues
-    }
-
-    function revealNode(idx) {
-        if (idx < constellationNodes.length) constellationNodes[idx].el.classList.add('visible');
-    }
-
-    function showModal(idx) {
-        modalBody.innerHTML = letterSteps[idx].html;
-        contentModal.classList.remove('hidden');
-        nextBtn.innerHTML = (idx === letterSteps.length - 1) ? "Cerrar \u2764\uFE0F" : "Siguiente \uD83C\uDF1F";
-    }
-
-    nextBtn.addEventListener('click', function() {
-        contentModal.classList.add('hidden');
-        
-        // Volver del Zoom
-        zoomContainer.style.transform = "scale(1)";
-        zoomContainer.style.opacity = "1";
-        
-        setTimeout(function() {
-            if (currentNodeIndex < constellationNodes.length) constellationNodes[currentNodeIndex].el.classList.add('visited');
-            if (currentNodeIndex < letterSteps.length - 1) {
-                currentNodeIndex++;
-                revealNode(currentNodeIndex);
-            } else {
-                // Secuencia Final: Juntar estrellas y explotar
-                var cx = width / 2;
-                var cy = height / 2;
-                
-                // 1. Juntar todas las estrellas en el centro
-                for (var i = 0; i < constellationNodes.length; i++) {
-                    var el = constellationNodes[i].el;
-                    el.style.transition = 'left 1.2s cubic-bezier(0.5, 0, 0.75, 0), top 1.2s cubic-bezier(0.5, 0, 0.75, 0), transform 1.2s ease, opacity 0.5s ease';
-                    el.style.left = cx + "px";
-                    el.style.top = cy + "px";
-                    el.style.transform = "translate(-50%, -50%) scale(0.5)"; // se hacen peque\u00f1as al juntarse
-                }
-                
-                // Borrar las l\u00edneas de la constelacion ocultandolas logicamente
-                currentNodeIndex = -1; // Esto evita que se sigan dibujando las lineas en draw()
-                
-                // 2. Explotar!
-                setTimeout(function() {
-                    // Ocultar los nodos DOM originales
-                    for (var i = 0; i < constellationNodes.length; i++) {
-                        constellationNodes[i].el.style.opacity = '0';
-                        constellationNodes[i].el.style.display = 'none';
-                    }
-                    
-                    // Iniciar destello flash y particulas
-                    explosionFlash = 1.0;
-                    for (var k = 0; k < 120; k++) {
-                        var angle = Math.random() * Math.PI * 2;
-                        var speed = Math.random() * 20 + 5;
-                        explosionParticles.push({
-                            x: cx, y: cy,
-                            vx: Math.cos(angle) * speed,
-                            vy: Math.sin(angle) * speed,
-                            alpha: 1,
-                            color: (Math.random() > 0.5) ? '#ff4b82' : '#ffffff',
-                            size: Math.random() * 4 + 1
-                        });
-                    }
-                    
-                    // 3. Mostrar el nombre de Alexandra
-                    showAlexandraName = true;
-                }, 1200); // Esperar a que se junten
-            }
-        }, 1000);
-    });
-
-    function createMeteorShower() {
-        for (var i = 0; i < 40; i++) {
-            shootingStars.push({
-                x: Math.random() * width * 1.5 - width * 0.2,
-                y: Math.random() * height * -1.5,
-                len: Math.random() * 100 + 50,
-                spd: Math.random() * 25 + 15, // Muy r\u00e1pidas
-                alpha: 1
-            });
-        }
-    }
-
-    // ===== INICIAR =====
-    openBtn.addEventListener('click', function() {
-        landingScreen.classList.add('fade-out');
-        setTimeout(function() {
-            landingScreen.classList.remove('active');
-            constellationScreen.classList.add('active');
-            resize();
-            setupConstellation();
-            draw();
-            createMeteorShower(); // Disparar la lluvia de meteoritos!
-        }, 1000);
-
-        // Reproducir musica - simple y directo
-        bgMusic.volume = 0.5;
-        bgMusic.play().catch(function(e) {
-            console.log("Audio play error:", e);
+            ctx.shadowBlur = 0;
         });
-    });
-
-    // ===== MUTE =====
-    muteBtn.addEventListener('click', function() {
-        if (isMuted) {
-            bgMusic.muted = false;
-            muteBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>';
-        } else {
-            bgMusic.muted = true;
-            muteBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><line x1="23" y1="9" x2="17" y2="15"></line><line x1="17" y1="9" x2="23" y2="15"></line></svg>';
+        if (!reducedMotion && skyTime > nextMeteor) {
+            meteors.push({ x: width * (0.3 + Math.random() * 0.6), y: height * Math.random() * 0.3, life: 1 });
+            nextMeteor = skyTime + 12 + Math.random() * 14;
         }
-        isMuted = !isMuted;
+        for (var i = meteors.length - 1; i >= 0; i--) {
+            var meteor = meteors[i];
+            meteor.x += dt * 170; meteor.y += dt * 75; meteor.life -= dt * 0.65;
+            if (meteor.life <= 0) { meteors.splice(i, 1); continue; }
+            var tail = ctx.createLinearGradient(meteor.x - 90, meteor.y - 40, meteor.x, meteor.y);
+            tail.addColorStop(0, 'rgba(215,228,246,0)');
+            tail.addColorStop(1, 'rgba(215,228,246,' + meteor.life * 0.6 + ')');
+            ctx.strokeStyle = tail; ctx.lineWidth = 1;
+            ctx.beginPath(); ctx.moveTo(meteor.x - 90, meteor.y - 40); ctx.lineTo(meteor.x, meteor.y); ctx.stroke();
+        }
+        if (state !== 'landing' && state !== 'ending') {
+            ctx.strokeStyle = 'rgba(219,195,151,0.28)';
+            ctx.lineWidth = 0.7;
+            ctx.beginPath();
+            for (var n = 1; n <= current && n < nodes.length; n++) {
+                ctx.moveTo(nodes[n-1].x * width, nodes[n-1].y * height);
+                ctx.lineTo(nodes[n].x * width, nodes[n].y * height);
+            }
+            ctx.stroke();
+        }
+        if (state === 'ending') {
+            finaleTime += dt;
+            var t = reducedMotion ? 1 : Math.min(finaleTime / 4, 1);
+            var eased = t * t * (3 - 2 * t);
+            var layout = nameLayout();
+            nameParticles.forEach(function (p) {
+                var x = p.x * width * (1 - eased) + (layout.x + p.tx * layout.scale) * eased;
+                var y = p.y * height * (1 - eased) + (layout.y + p.ty * layout.scale) * eased;
+                ctx.fillStyle = 'rgba(244,224,185,' + (0.5 + Math.sin(skyTime + p.phase) * 0.2) + ')';
+                ctx.beginPath(); ctx.arc(x, y, p.r, 0, Math.PI * 2); ctx.fill();
+            });
+            if (t > 0.55) {
+                ctx.strokeStyle = 'rgba(227,204,165,' + Math.min((t - 0.55) / 0.45, 1) * 0.55 + ')';
+                ctx.lineWidth = 0.8;
+                ctx.beginPath();
+                alexandraLines.forEach(function (segment) {
+                    ctx.moveTo(layout.x + segment[0].x * layout.scale, layout.y + segment[0].y * layout.scale);
+                    ctx.lineTo(layout.x + segment[1].x * layout.scale, layout.y + segment[1].y * layout.scale);
+                });
+                ctx.stroke();
+            }
+            if (t === 1 && finale.hidden) {
+                finale.hidden = false;
+                document.getElementById('replay-btn').focus({ preventScroll: true });
+            }
+        }
+        frameId = requestAnimationFrame(draw);
+    }
+
+    function updateNodes() {
+        nodes.forEach(function (node, index) {
+            node.el.disabled = index !== current || state !== 'exploring';
+            node.el.classList.toggle('visible', index <= current);
+            node.el.classList.toggle('visited', visited.has(index));
+            node.el.classList.toggle('current', index === current);
+        });
+    }
+    function setupNodes() {
+        var container = document.getElementById('nodes-container');
+        container.replaceChildren(); nodes = [];
+        var positions = [[.16,.34],[.31,.60],[.44,.36],[.57,.62],[.70,.33],[.84,.55]];
+        positions.forEach(function (pos, index) {
+            var el = document.createElement('button');
+            el.className = 'constellation-node';
+            el.setAttribute('aria-label', 'Leer ' + chapterTitles[index]);
+            el.innerHTML = '<span class="star-core" aria-hidden="true"></span><span class="star-label">0' + (index + 1) + '</span>';
+            el.style.left = pos[0] * 100 + '%'; el.style.top = pos[1] * 100 + '%';
+            el.addEventListener('click', function () { openChapter(index); });
+            container.appendChild(el);
+            nodes.push({ x: pos[0], y: pos[1], el: el });
+        });
+        updateNodes();
+    }
+    function openChapter(index) {
+        if (state !== 'exploring' || index !== current) return;
+        reading = index; state = 'reading'; updateNodes();
+        guide.style.opacity = '0'; cameraTarget = 0.13;
+        document.body.classList.add('is-reading');
+        document.getElementById('chapter-number').textContent = 'ESTRELLA 0' + (index + 1) + ' / 06';
+        document.getElementById('chapter-title').textContent = chapterTitles[index];
+        modalBody.innerHTML = letterSteps[index].html;
+        document.getElementById('chapter-dots').innerHTML = letterSteps.map(function (_, i) {
+            return '<span class="' + (i === index ? 'active' : '') + '"></span>';
+        }).join('');
+        nextBtn.innerHTML = (index === 5 ? 'Contemplar el cielo' : 'Seguir el hilo') + ' <span aria-hidden="true">&#8594;</span>';
+        card.scrollTop = 0;
+        modal.inert = false; modal.classList.remove('hidden');
+        focusTimer = setTimeout(function () { if (state === 'reading') nextBtn.focus({ preventScroll: true }); }, reducedMotion ? 0 : 650);
+        progress.textContent = '0' + (index + 1) + ' / 06';
+    }
+    nextBtn.addEventListener('click', function () {
+        if (state !== 'reading') return;
+        clearTimeout(focusTimer);
+        state = 'transition'; nextBtn.blur();
+        modal.inert = true; modal.classList.add('hidden');
+        document.body.classList.remove('is-reading'); cameraTarget = 0;
+        visited.add(reading);
+        setTimeout(function () {
+            if (reading === letterSteps.length - 1) { startEnding(); return; }
+            current = reading + 1; state = 'exploring'; updateNodes();
+            guide.textContent = 'Sigue la luz de la siguiente estrella'; guide.style.opacity = '1';
+            nodes[current].el.focus({ preventScroll: true });
+        }, reducedMotion ? 0 : 700);
     });
+    modal.addEventListener('keydown', function (event) {
+        if (event.key === 'Tab') { event.preventDefault(); nextBtn.focus(); }
+    });
+    function startEnding() {
+        state = 'ending'; finaleTime = 0; nameParticles = [];
+        guide.style.opacity = '0'; progress.textContent = 'Cada encuentro dibuja algo distinto';
+        nodes.forEach(function (node) { node.el.disabled = true; node.el.classList.add('departing'); });
+        alexandraLines.forEach(function (segment, index) {
+            for (var j = 0; j <= 5; j++) {
+                var node = nodes[index % nodes.length], f = j / 5;
+                nameParticles.push({ x: node.x, y: node.y,
+                    tx: segment[0].x + (segment[1].x - segment[0].x) * f,
+                    ty: segment[0].y + (segment[1].y - segment[0].y) * f,
+                    r: j === 0 || j === 5 ? 1.6 : 0.7, phase: Math.random() * 6 });
+            }
+        });
+    }
+    function beginJourney() {
+        state = 'exploring'; current = 0; visited.clear();
+        finale.hidden = true; landing.hidden = true; landing.classList.remove('active');
+        journey.hidden = false; journey.classList.add('active');
+        document.body.classList.add('journey-started');
+        progress.textContent = 'Una historia en seis estrellas';
+        guide.textContent = 'Toca la estrella que brilla para comenzar'; guide.style.opacity = '1';
+        muteBtn.hidden = false; setupNodes();
+        nodes[0].el.focus({ preventScroll: true });
+    }
+    document.getElementById('open-btn').addEventListener('click', function () {
+        if (state !== 'landing') return;
+        beginJourney();
+        music.volume = 0;
+        music.play().catch(function () { updateAudio(); });
+    });
+    music.addEventListener('playing', function () {
+        updateAudio();
+        var start = performance.now();
+        cancelAnimationFrame(audioFadeId);
+        function fade(now) {
+            music.volume = Math.min((now - start) / 4500, 1) * 0.38;
+            if (now - start < 4500) audioFadeId = requestAnimationFrame(fade);
+        }
+        audioFadeId = requestAnimationFrame(fade);
+    });
+    function updateAudio() {
+        var playing = !music.paused && !music.muted;
+        muteBtn.setAttribute('aria-pressed', String(playing));
+        muteBtn.setAttribute('aria-label', playing ? 'Silenciar música' : 'Activar música');
+        document.getElementById('sound-label').textContent = playing ? 'Sonido activo' : 'Activar sonido';
+    }
+    muteBtn.addEventListener('click', function () {
+        if (music.paused) { music.muted = false; music.play().catch(updateAudio); }
+        else { music.muted = !music.muted; }
+        updateAudio();
+    });
+    document.getElementById('replay-btn').addEventListener('click', beginJourney);
+    document.addEventListener('visibilitychange', function () {
+        if (document.hidden) { cancelAnimationFrame(frameId); frameId = null; }
+        else if (frameId === null) { lastTime = 0; frameId = requestAnimationFrame(draw); }
+    });
+    resize(); frameId = requestAnimationFrame(draw);
 });
