@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Para ti, Chiquita 🌻 21 de Septiembre</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Alex+Brush&family=Dancing+Script:wght@700&family=Montserrat:wght@300;400;600;700;800&family=Playfair+Display:ital,wght@0,600;1,400&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css?v=20260925b">
+    
+    <!-- Three.js y OrbitControls desde CDN oficial -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <!-- Fotos precargadas en base64 para evitar errores de CORS local -->
+    <script src="fotos_data.js"></script>
+</head>
+<body>
+
+    <!-- PANTALLA DE ENTRADA CINEMATOGRÁFICA -->
+    <div id="intro-screen" class="intro-screen">
+        <div class="intro-nebula"></div>
+        <div class="intro-content">
+            <div class="intro-badge">🌻 21 DE SEPTIEMBRE 🌻</div>
+            <h1 class="intro-title">Para ti, Chiquita</h1>
+            <p class="intro-subtitle">
+                ¡Feliz Día de las Flores Amarillas!<br>
+                <span>Hay un universo entero esperando por ti ✨</span>
+            </p>
+            <button id="enter-universe-btn" class="enter-btn">
+                <span class="enter-btn-glow"></span>
+                <span class="enter-btn-content">🌻 Entrar a tu Universo 🌻</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Destello de la Gran Supernova / Explosión -->
+    <div id="warp-flash" class="warp-flash"></div>
+
+    <!-- Contenedor 3D WebGL -->
+    <div id="webgl-container"></div>
+
+    <!-- Contenedor de efectos de pétalos al tocar la pantalla -->
+    <div id="touch-effects-container"></div>
+
+    <!-- Título superior con brillo dorado -->
+    <div class="header-overlay" id="main-header">
+        <h1 class="golden-title">Para ti, Chiquita</h1>
+        <p class="golden-subtitle">🌻 21 de Septiembre · Flores Amarillas para ti 🌻</p>
+    </div>
+
+    <!-- Botones de Acción Flotantes -->
+    <div class="action-buttons-container" id="main-actions">
+        <button id="letter-btn" class="action-btn letter-btn">
+            <span class="btn-icon">💌</span>
+            <span>Leer tu carta</span>
+        </button>
+        <button id="reel-btn" class="action-btn reel-btn">
+            <span class="btn-icon">📸</span>
+            <span>Ver fotos</span>
+        </button>
+    </div>
+
+    <!-- NOTIFICACIÓN / CUMPLIDO AL TOCAR UNA FLOR -->
+    <div id="flower-toast" class="flower-toast">
+        <span class="flower-toast-icon">🌻</span>
+        <div class="flower-toast-content">
+            <span class="flower-toast-tag">Mensaje de esta flor:</span>
+            <p id="flower-toast-text"></p>
+        </div>
+    </div>
+
+    <!-- AVISO DE ESTRELLA FUGAZ -->
+    <div id="shooting-star-hint" class="shooting-star-hint">
+        <span>💫 ¡Estrella fugaz cruzando el universo! ¡Tócala! 💫</span>
+    </div>
+
+    <!-- Indicador de interacción 3D -->
+    <div class="hint-overlay" id="main-hint">
+        <span>✨ Toca las fotos, las flores o arrastra para girar en 360° ✨</span>
+    </div>
+
+    <!-- Botón de música flotante -->
+    <button id="music-toggle" class="music-btn" title="Activar/Desactivar música">
+        <span id="music-icon">🎵</span>
+        <span id="music-text">Música</span>
+    </button>
+
+    <!-- ==========================================
+         MODAL REEL / VISOR DE FOTOS CÓSMICO (PASO 1 DEL RECORRIDO CINE)
+         ========================================== -->
+    <div id="reel-modal" class="reel-modal">
+        <div class="reel-card">
+            <!-- Barras de avance automático tipo Cine / Story -->
+            <div class="reel-progress-bars" id="reel-progress-bars">
+                <div class="reel-progress-bar"><div class="reel-progress-fill" id="bar-fill-0"></div></div>
+                <div class="reel-progress-bar"><div class="reel-progress-fill" id="bar-fill-1"></div></div>
+                <div class="reel-progress-bar"><div class="reel-progress-fill" id="bar-fill-2"></div></div>
+                <div class="reel-progress-bar"><div class="reel-progress-fill" id="bar-fill-3"></div></div>
+            </div>
+
+            <button id="close-reel-btn" class="close-modal-btn">✕</button>
+            
+            <div class="reel-header">
+                <span class="reel-badge">🎬 Tus Recuerdos en el Universo 🌻</span>
+                <span id="reel-counter" class="reel-counter">1 / 4</span>
+            </div>
+
+            <div class="reel-image-box">
+                <img id="reel-img" src="" alt="Foto de Chiquita">
+            </div>
+
+            <div class="reel-caption-box">
+                <p id="reel-caption" class="reel-caption"></p>
+                <p id="reel-date" class="reel-subtext"></p>
+            </div>
+
+            <div class="reel-controls">
+                <button id="prev-photo-btn" class="nav-photo-btn" title="Foto anterior">❮</button>
+                <div class="reel-dots" id="reel-dots">
+                    <span class="dot active"></span>
+                    <span class="dot"></span>
+                    <span class="dot"></span>
+                    <span class="dot"></span>
+                </div>
+                <button id="next-photo-btn" class="nav-photo-btn" title="Siguiente foto">❯</button>
+            </div>
+
+            <!-- Botón para avanzar a la carta directamente si desea adelantar -->
+            <button id="reel-to-letter-btn" class="continue-to-letter-btn">
+                <span>Continuar a tu carta 💌</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- ==========================================
+         MODAL DE LA CARTA SINCERA (PASO 2 DEL RECORRIDO CINE)
+         ========================================== -->
+    <div id="letter-modal" class="letter-modal">
+        <div class="letter-card" id="letter-card">
+            <button id="close-letter-btn" class="close-modal-btn">✕</button>
+            <div class="letter-header">
+                <div class="letter-ornament">🌻 ✨ 🌻</div>
+                <h2 class="letter-title">Para ti, Chiquita</h2>
+                <p class="letter-subtitle">21 de Septiembre · Un detalle especial</p>
+            </div>
+            <div class="letter-body" id="letter-body">
+                <p>Quién diría que un lugar tan formal como una <em>entrevista de trabajo</em> se convertiría en el punto de partida para que nuestros caminos se cruzaran.</p>
+                <p>En <strong>enero de 2026</strong> empezamos a hablar por WhatsApp. Al principio eran charlas casuales, pero con el paso de los días, sin siquiera planearlo, tus mensajes se convirtieron en lo primero que buscaba y en la razón por la que terminaba mis días con una sonrisa. Tienes una forma tan natural, linda y espontánea de ser que hablar contigo hace que cualquier día pesado se vuelva ligero.</p>
+                <p>Y entonces llegó ese <strong>1 de agosto</strong>, nuestra primera salida en persona. Si ya me parecías linda por chat, verte en persona superó absolutamente todo. Tienes una mirada que transmite una calma increíble y una sonrisa tan hermosa que ilumina todo a tu alrededor. Recuerdo que las horas parecían minutos solo con escucharte hablar, compartir risas y ver cómo se te iluminaban los ojos al conversar.</p>
+                <p>Hace solo unos días fue tu cumpleaños (<strong>14 de septiembre</strong> 🎂), una fecha para celebrar la existencia de alguien tan maravillosa como tú. Y hoy, <strong>21 de septiembre</strong>, la tradición dice que se regalan flores amarillas a esa persona que llena de luz tu vida. Pero sentí que un ramo de flores común se marchitaría con los días, y tú mereces algo que no se apague nunca. Por eso quise crear <strong>un universo entero de girasoles y estrellas solo para ti</strong>, donde cada destello guarde un pedacito de lo especial que eres.</p>
+                <p class="letter-highlight">No sé qué páginas escribirá el destino ni hacia dónde nos lleve la vida con el tiempo, pero de lo que sí estoy completamente seguro es de que <strong>conocerte ha sido una de las coincidencias más bonitas de mi vida</strong>. Tienes una magia única, Chiquita, de esas que no se encuentran dos veces. Si algo llega o no a funcionar más adelante, ya haber coincidido contigo, disfrutar de tu compañía y verte sonreír habrá valido la pena cada segundo. 💛</p>
+                <p>Gracias por tu alegría, por tu luz, por ser tan auténtica y por recordarme lo lindo que es coincidir con alguien que hace que el mundo tenga mucho más color.</p>
+                <p class="letter-signature">Con todo mi cariño y admiración,<br><span>De alguien a quien le fascina verte sonreír ✨🌻</span></p>
+            </div>
+            <!-- Botón final para quedar en el universo -->
+            <button id="return-btn" class="return-btn">🌌 Explorar el Universo Libremente ✨</button>
+        </div>
+    </div>
+
+    <!-- ==========================================
+         MODAL DE DESEO DE ESTRELLA FUGAZ
+         ========================================== -->
+    <div id="wish-modal" class="wish-modal">
+        <div class="wish-card">
+            <div class="wish-sparkle-bg"></div>
+            <div class="wish-star-icon">💫</div>
+            <h3 class="wish-title">¡Atrapaste un Deseo!</h3>
+            <div class="wish-divider"></div>
+            <p id="wish-text" class="wish-text"></p>
+            <button id="close-wish-btn" class="wish-btn">✨ Guardar en mi corazón ✨</button>
+        </div>
+    </div>
+
+    <!-- Audio para la canción -->
+    <audio id="bg-audio" loop preload="auto">
+        <source src="Floricienta — Flores Amarillas [Letra].mp3" type="audio/mpeg">
+        <source src="cancion.mp3" type="audio/mpeg">
+    </audio>
+
+    <script src="script.js?v=20260925b"></script>
+</body>
+</html>

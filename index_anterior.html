@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Para Meyli</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Alex+Brush&family=Playfair+Display:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style22.css?v=41">
+</head>
+<body>
+
+    <!-- Audios (rutas exactas para GitHub Pages) -->
+    <audio id="audio-fondo" src="fondo.mp3" preload="auto" loop></audio>
+    <audio id="audio-poema" src="voz.mp3" preload="auto"></audio>
+
+    <!-- Fondos -->
+    <div id="bg-1" class="real-background active" style="background-image: url('assets/background.png');"></div>
+    <div id="bg-2" class="real-background" style="background-image: url('assets/bg-forest.png');"></div>
+    <div id="bg-3" class="real-background" style="background-image: url('assets/bg-sunrise.png');"></div>
+    <div id="bg-4" class="real-background" style="background-image: url('assets/bg-parchment.png');"></div>
+    
+    <div id="water-overlay"></div>
+
+    <!-- Final Poético -->
+    <div id="handwritten-finale">
+        <div class="handwritten-text">Eres la casualidad más bonita de mi vida.</div>
+    </div>
+
+    <!-- Faroles -->
+    <div id="lanterns-container"></div>
+
+    <!-- UI -->
+    <div id="ui-layer">
+
+        <!-- INICIO -->
+        <div id="start-screen" class="active">
+            <div class="envelope-scene">
+
+                <div id="fairy-dust-container"></div>
+
+                <!-- Contenedor que agrupa sobre y tarjeta -->
+                <div class="envelope-wrapper">
+
+                    <!-- TARJETA ENMASCARADA (Simula el bolsillo del sobre) -->
+                    <div class="card-mask">
+                        <div class="card" id="card">
+                            <div class="card-border-outer">
+                                <div class="card-border-inner">
+                                    <div class="card-name-area">
+                                        <span class="name-text" id="card-name">Meyli</span>
+                                    </div>
+                                    <div class="poem-container" id="poem-container"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- SOBRE (visible, delante) -->
+                    <div class="envelope" id="envelope-click">
+                        <div class="envelope-body"></div>
+                        <div class="envelope-flap" id="envelope-flap"></div>
+                        <div class="wax-seal" id="wax-seal">
+                            <span class="seal-heart">❤</span>
+                        </div>
+                    </div>
+
+                </div>
+                
+                <!-- Botón de Cerrar fuera de la carta, en la parte inferior de la pantalla -->
+                <button id="btn-close-card" class="hidden">Cerrar Carta</button>
+
+                <p class="ribbon-text" id="ribbon-txt">Rompe el sello para abrir la carta ✨</p>
+            </div>
+        </div>
+
+        <!-- POEMA -->
+        <div id="experience-screen">
+            <div id="magic-text" class="magic-text"></div>
+        </div>
+
+        <!-- Contenedor para la explosión final y reconstrucción -->
+        <div id="explosion-container"></div>
+
+    </div>
+
+    <script src="script22.js?v=42"></script>
+</body>
+</html>
