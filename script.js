@@ -13,6 +13,8 @@ document.addEventListener('DOMContentLoaded', function () {
     var finale = document.getElementById('finale');
     var music = document.getElementById('bg-music');
     var muteBtn = document.getElementById('mute-btn');
+    var photoViewer = document.getElementById('photo-viewer');
+    var starTransition = document.getElementById('star-transition');
     var motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
     var reducedMotion = motionQuery.matches;
     motionQuery.addEventListener('change', function (event) { reducedMotion = event.matches; });
@@ -22,6 +24,8 @@ document.addEventListener('DOMContentLoaded', function () {
     var lastTime = 0, skyTime = 0, finaleTime = 0, nextMeteor = 9;
     var frameId = null, audioFadeId = null, focusTimer = null;
     var camera = 0, cameraTarget = 0;
+    var cameraFocus = { x: 0.5, y: 0.5 };
+    var burstParticles = [];
     var chapterTitles = ['Una coincidencia', 'Tu mirada', 'Lo que admiro de ti', 'Sin mirar el reloj', 'Pequeños recuerdos', 'Lo que sigue'];
     var letterSteps = [
         { html: '<div class="photo-container"><img src="WhatsApp%20Image%202026-11-08%20at%201.53.35%20PM.jpeg" alt="Alexandra" class="alexandra-photo"></div><p>Alexandra, hay personas que llegan a tu vida en los momentos más inesperados. Como en el trabajo, donde supuestamente estás concentrado en otras cosas, hasta que te cruzas con una mirada que te hace olvidar por un instante lo que estabas haciendo. Así me pasó contigo: sin darme cuenta, ya habías captado toda mi atención.</p>' },
@@ -94,8 +98,8 @@ document.addEventListener('DOMContentLoaded', function () {
             var drift = reducedMotion ? 0 : skyTime * (0.5 + star.depth * 1.2);
             var x = ((star.x * width + drift) % (width + 40)) - 20;
             var y = star.y * height;
-            x += pointer.smoothX * star.depth * 22 + (x - width / 2) * camera * star.depth;
-            y += pointer.smoothY * star.depth * 16 + (y - height / 2) * camera * star.depth;
+            x += pointer.smoothX * star.depth * 22 + (x - width * cameraFocus.x) * camera * star.depth;
+            y += pointer.smoothY * star.depth * 16 + (y - height * cameraFocus.y) * camera * star.depth;
             var alpha = 0.22 + star.depth * 0.4 + (reducedMotion ? 0.1 : Math.sin(skyTime * star.speed + star.phase) * 0.16);
             ctx.fillStyle = 'rgba(' + (star.warm ? '237,211,168,' : '215,228,246,') + alpha + ')';
             if (star.depth > 0.9) {
@@ -133,12 +137,44 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         if (state === 'ending') {
             finaleTime += dt;
-            var t = reducedMotion ? 1 : Math.min(finaleTime / 4, 1);
+            var gathering = Math.min(finaleTime / 1.8, 1);
+            var gatherEase = gathering * gathering * (3 - 2 * gathering);
+            var t = reducedMotion ? 1 : Math.max(0, Math.min((finaleTime - 2.35) / 2.8, 1));
             var eased = t * t * (3 - 2 * t);
             var layout = nameLayout();
-            nameParticles.forEach(function (p) {
-                var x = p.x * width * (1 - eased) + (layout.x + p.tx * layout.scale) * eased;
-                var y = p.y * height * (1 - eased) + (layout.y + p.ty * layout.scale) * eased;
+            if (!reducedMotion && finaleTime < 1.8) {
+                nodes.forEach(function (node) {
+                    var x = (node.x + (0.5 - node.x) * gatherEase) * width;
+                    var y = (node.y + (0.43 - node.y) * gatherEase) * height;
+                    ctx.shadowColor = '#ffe2a0'; ctx.shadowBlur = 22;
+                    ctx.fillStyle = '#fff1c9';
+                    ctx.beginPath(); ctx.arc(x, y, 7 + gatherEase * 2, 0, Math.PI * 2); ctx.fill();
+                    ctx.shadowBlur = 0;
+                });
+            }
+            var burstAge = finaleTime - 1.8;
+            if (!reducedMotion && burstAge >= 0 && burstAge < 2.2) {
+                var bloomAlpha = Math.max(0, 1 - burstAge / 1.1) * 0.7;
+                var radius = 35 + burstAge * Math.min(width, height) * 0.6;
+                var bloom = ctx.createRadialGradient(width / 2, height * 0.43, 0, width / 2, height * 0.43, radius);
+                bloom.addColorStop(0, 'rgba(255,246,221,' + bloomAlpha + ')');
+                bloom.addColorStop(0.25, 'rgba(245,199,171,' + bloomAlpha * 0.6 + ')');
+                bloom.addColorStop(1, 'rgba(232,177,189,0)');
+                ctx.fillStyle = bloom; ctx.fillRect(0, 0, width, height);
+                ctx.strokeStyle = 'rgba(255,225,181,' + Math.max(0, 0.55 - burstAge * 0.4) + ')';
+                ctx.lineWidth = 2;
+                ctx.beginPath(); ctx.arc(width / 2, height * 0.43, radius * 0.7, 0, Math.PI * 2); ctx.stroke();
+                burstParticles.forEach(function (p) {
+                    var distance = p.speed * (1 - Math.exp(-burstAge * 1.5));
+                    var x = width / 2 + Math.cos(p.angle) * distance;
+                    var y = height * 0.43 + Math.sin(p.angle) * distance;
+                    ctx.fillStyle = 'rgba(' + p.color + ',' + Math.max(0, 1 - burstAge / 2.2) + ')';
+                    ctx.beginPath(); ctx.arc(x, y, p.r, 0, Math.PI * 2); ctx.fill();
+                });
+            }
+            if (t > 0) nameParticles.forEach(function (p) {
+                var x = width / 2 * (1 - eased) + (layout.x + p.tx * layout.scale) * eased;
+                var y = height * 0.43 * (1 - eased) + (layout.y + p.ty * layout.scale) * eased;
                 ctx.fillStyle = 'rgba(244,224,185,' + (0.5 + Math.sin(skyTime + p.phase) * 0.2) + ')';
                 ctx.beginPath(); ctx.arc(x, y, p.r, 0, Math.PI * 2); ctx.fill();
             });
@@ -186,15 +222,36 @@ document.addEventListener('DOMContentLoaded', function () {
     }
     function openChapter(index) {
         if (state !== 'exploring' || index !== current) return;
-        reading = index; state = 'reading'; updateNodes();
-        guide.style.opacity = '0'; cameraTarget = 0.13;
-        document.body.classList.add('is-reading');
+        reading = index; state = 'entering'; updateNodes();
+        guide.style.opacity = '0'; cameraTarget = 0.8;
+        cameraFocus.x = nodes[index].x; cameraFocus.y = nodes[index].y;
+        starTransition.style.left = nodes[index].x * 100 + '%';
+        starTransition.style.top = nodes[index].y * 100 + '%';
+        document.getElementById('nodes-container').style.transformOrigin = nodes[index].x * 100 + '% ' + nodes[index].y * 100 + '%';
+        document.body.classList.add('is-entering');
         document.getElementById('chapter-title').textContent = chapterTitles[index];
         modalBody.innerHTML = letterSteps[index].html;
+        var photo = modalBody.querySelector('.alexandra-photo');
+        var photoButton = null;
+        if (photo) {
+            photoButton = document.createElement('button');
+            photoButton.className = 'photo-open';
+            photoButton.setAttribute('aria-label', 'Ver foto completa de Alexandra');
+            photo.replaceWith(photoButton); photoButton.appendChild(photo);
+            var hint = document.createElement('span');
+            hint.className = 'photo-hint'; hint.textContent = 'Toca para ver la foto';
+            photoButton.appendChild(hint);
+            photoButton.addEventListener('click', function () { photoViewer.showModal(); });
+        }
         nextBtn.innerHTML = (index === 5 ? 'Ver el cielo' : 'Siguiente') + ' <span aria-hidden="true">&#8594;</span>';
         card.scrollTop = 0;
-        modal.inert = false; modal.classList.remove('hidden');
-        focusTimer = setTimeout(function () { if (state === 'reading') nextBtn.focus({ preventScroll: true }); }, reducedMotion ? 0 : 650);
+        focusTimer = setTimeout(function () {
+            state = 'reading';
+            document.body.classList.remove('is-entering');
+            document.body.classList.add('is-reading');
+            modal.inert = false; modal.classList.remove('hidden');
+            (photoButton || nextBtn).focus({ preventScroll: true });
+        }, reducedMotion ? 0 : 700);
         progress.textContent = '0' + (index + 1) + ' / 06';
     }
     nextBtn.addEventListener('click', function () {
@@ -212,16 +269,36 @@ document.addEventListener('DOMContentLoaded', function () {
         }, reducedMotion ? 0 : 700);
     });
     modal.addEventListener('keydown', function (event) {
-        if (event.key === 'Tab') { event.preventDefault(); nextBtn.focus(); }
+        if (event.key !== 'Tab') return;
+        var first = modalBody.querySelector('.photo-open') || nextBtn;
+        if (event.shiftKey && document.activeElement === first) {
+            event.preventDefault(); nextBtn.focus();
+        } else if (!event.shiftKey && document.activeElement === nextBtn) {
+            event.preventDefault(); first.focus();
+        }
+    });
+    document.getElementById('close-photo').addEventListener('click', function () { photoViewer.close(); });
+    photoViewer.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape') { event.preventDefault(); photoViewer.close(); }
+    });
+    photoViewer.addEventListener('click', function (event) {
+        if (event.target === photoViewer) photoViewer.close();
     });
     function startEnding() {
         state = 'ending'; finaleTime = 0; nameParticles = [];
+        burstParticles = [];
+        for (var k = 0; k < 130; k++) {
+            burstParticles.push({ angle: Math.random() * Math.PI * 2,
+                speed: (0.1 + Math.random() * 0.55) * Math.min(width, height),
+                r: 1 + Math.random() * 2.5,
+                color: Math.random() > 0.5 ? '255,229,178' : '241,193,213' });
+        }
         guide.style.opacity = '0'; progress.textContent = 'Cada encuentro dibuja algo distinto';
         nodes.forEach(function (node) { node.el.disabled = true; node.el.classList.add('departing'); });
         alexandraLines.forEach(function (segment, index) {
             for (var j = 0; j <= 5; j++) {
-                var node = nodes[index % nodes.length], f = j / 5;
-                nameParticles.push({ x: node.x, y: node.y,
+                var f = j / 5;
+                nameParticles.push({
                     tx: segment[0].x + (segment[1].x - segment[0].x) * f,
                     ty: segment[0].y + (segment[1].y - segment[0].y) * f,
                     r: j === 0 || j === 5 ? 2.3 : 1.1, phase: Math.random() * 6 });

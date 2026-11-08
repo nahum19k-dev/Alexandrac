@@ -30,6 +30,7 @@
                 <span id="journey-progress" class="sr-only" role="status"></span>
             </header>
             <div id="nodes-container"></div>
+            <div id="star-transition" aria-hidden="true"></div>
             <p id="click-guide" class="click-guide">Toca la estrella que brilla para comenzar</p>
             <div id="content-modal" class="hidden" role="dialog" aria-modal="true" aria-labelledby="chapter-title" inert>
                 <article class="glass-card">
@@ -47,6 +48,10 @@
             </div>
         </section>
     </main>
+    <dialog id="photo-viewer" aria-label="Foto de Alexandra">
+        <button id="close-photo" class="close-photo" aria-label="Cerrar foto" autofocus>&times;</button>
+        <img src="WhatsApp%20Image%202026-11-08%20at%201.53.35%20PM.jpeg" alt="Alexandra" class="full-photo">
+    </dialog>
     <button id="mute-btn" class="music-control" aria-label="Activar m&uacute;sica" aria-pressed="false" hidden>
         <span class="sound-bars" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
         <span id="sound-label">Sonido</span>
