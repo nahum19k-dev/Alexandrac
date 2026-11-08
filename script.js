@@ -69,7 +69,7 @@ document.addEventListener('DOMContentLoaded', function () {
             for (var i = 0; i < 260; i++) {
                 var depth = Math.random();
                 stars.push({ x: Math.random(), y: Math.random(), depth: depth,
-                    r: 0.3 + depth * 1.25, phase: Math.random() * Math.PI * 2,
+                    r: 0.55 + depth * 2.15, phase: Math.random() * Math.PI * 2,
                     speed: 0.25 + Math.random() * 0.65, warm: Math.random() > 0.78 });
             }
         }
@@ -176,7 +176,7 @@ document.addEventListener('DOMContentLoaded', function () {
             var el = document.createElement('button');
             el.className = 'constellation-node';
             el.setAttribute('aria-label', 'Leer ' + chapterTitles[index]);
-            el.innerHTML = '<span class="star-core" aria-hidden="true"></span><span class="star-label">0' + (index + 1) + '</span>';
+            el.innerHTML = '<span class="star-core" aria-hidden="true"></span>';
             el.style.left = pos[0] * 100 + '%'; el.style.top = pos[1] * 100 + '%';
             el.addEventListener('click', function () { openChapter(index); });
             container.appendChild(el);
@@ -189,13 +189,9 @@ document.addEventListener('DOMContentLoaded', function () {
         reading = index; state = 'reading'; updateNodes();
         guide.style.opacity = '0'; cameraTarget = 0.13;
         document.body.classList.add('is-reading');
-        document.getElementById('chapter-number').textContent = 'ESTRELLA 0' + (index + 1) + ' / 06';
         document.getElementById('chapter-title').textContent = chapterTitles[index];
         modalBody.innerHTML = letterSteps[index].html;
-        document.getElementById('chapter-dots').innerHTML = letterSteps.map(function (_, i) {
-            return '<span class="' + (i === index ? 'active' : '') + '"></span>';
-        }).join('');
-        nextBtn.innerHTML = (index === 5 ? 'Contemplar el cielo' : 'Seguir el hilo') + ' <span aria-hidden="true">&#8594;</span>';
+        nextBtn.innerHTML = (index === 5 ? 'Ver el cielo' : 'Siguiente') + ' <span aria-hidden="true">&#8594;</span>';
         card.scrollTop = 0;
         modal.inert = false; modal.classList.remove('hidden');
         focusTimer = setTimeout(function () { if (state === 'reading') nextBtn.focus({ preventScroll: true }); }, reducedMotion ? 0 : 650);
@@ -228,7 +224,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 nameParticles.push({ x: node.x, y: node.y,
                     tx: segment[0].x + (segment[1].x - segment[0].x) * f,
                     ty: segment[0].y + (segment[1].y - segment[0].y) * f,
-                    r: j === 0 || j === 5 ? 1.6 : 0.7, phase: Math.random() * 6 });
+                    r: j === 0 || j === 5 ? 2.3 : 1.1, phase: Math.random() * 6 });
             }
         });
     }
