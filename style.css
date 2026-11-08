@@ -89,6 +89,7 @@ body, html {
 
 .landing-content {
     text-align: center;
+    width: min(100% - 32px, 900px);
     animation: float 4s ease-in-out infinite;
     position: relative;
     z-index: 2;
@@ -96,7 +97,7 @@ body, html {
 
 .title {
     font-family: 'Dancing Script', cursive;
-    font-size: 5rem;
+    font-size: clamp(2.5rem, 8vw, 5rem);
     color: #ff4b82;
     text-shadow: 0 0 25px rgba(255, 75, 130, 0.6);
     margin-bottom: 12px;
@@ -290,7 +291,7 @@ body, html {
     margin-bottom: 28px;
 }
 
-.meyli-photo {
+.alexandra-photo {
     width: 155px;
     height: 155px;
     object-fit: cover;
@@ -361,9 +362,9 @@ body, html {
 }
 
 @media (max-width: 768px) {
-    .title { font-size: 3.5rem; }
+    .title { font-size: clamp(2.5rem, 8vw, 3.5rem); }
     .glass-card { padding: 35px 22px; }
     .letter-content p { font-size: 1.1rem; }
-    .meyli-photo { width: 130px; height: 130px; }
+    .alexandra-photo { width: 130px; height: 130px; }
     .glow-on-hover { width: 230px; height: 50px; font-size: 1.05rem; }
 }

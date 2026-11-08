@@ -19,13 +19,13 @@ document.addEventListener('DOMContentLoaded', function() {
     var shootingStars = [];
     var constellationNodes = [];
     var currentNodeIndex = 0;
-    var showMeyliName = false;
+    var showAlexandraName = false;
     var nameAlpha = 0;
     var explosionParticles = [];
     var explosionFlash = 0;
 
     var letterSteps = [
-        { html: '<div class="photo-container"><img src="WhatsApp%20Image%202026-11-08%20at%201.53.35%20PM.jpeg" alt="Meyli" class="meyli-photo"></div><p>Hay personas que llegan a tu vida en los momentos m\u00e1s inesperados... como en una entrevista de trabajo donde supuestamente uno deber\u00eda estar concentrado en otras cosas. Pero entonces alguien te habla, te pregunta algo, y sin darte cuenta ya capt\u00f3 toda tu atenci\u00f3n.</p>' },
+        { html: '<div class="photo-container"><img src="WhatsApp%20Image%202026-11-08%20at%201.53.35%20PM.jpeg" alt="Alexandra" class="alexandra-photo"></div><p>Alexandra, hay personas que llegan a tu vida en los momentos m\u00e1s inesperados... como en una entrevista de trabajo donde supuestamente uno deber\u00eda estar concentrado en otras cosas. Pero entonces alguien te habla, te pregunta algo, y sin darte cuenta ya capt\u00f3 toda tu atenci\u00f3n.</p>' },
         { html: '<p>Lo primero que not\u00e9 fueron tus ojos. Esos ojos chinitos y llenos de ternura que tienen algo dif\u00edcil de explicar... no s\u00e9 si es la forma en que miran o simplemente lo que hay detr\u00e1s de ellos, pero desde ese momento algo me dijo que val\u00eda la pena conocerte mejor.</p>' },
         { html: '<p>Y mientras m\u00e1s te conozco, m\u00e1s confirmo que detr\u00e1s de esa mirada hay una persona disciplinada, inteligente, segura de s\u00ed misma, que se levanta a las 6am a cycling sin falta, que sufre con las pel\u00edculas sangrientas pero ama las rom\u00e1nticas, que tiene buen gusto para la comida porque el saltado no falla...</p>' },
         { html: '<p>...y que hace que las conversaciones no quieran terminar... incluso cuando ya son las 4am y ambos deber\u00edamos estar durmiendo \ud83d\ude0f</p>' },
@@ -33,13 +33,26 @@ document.addEventListener('DOMContentLoaded', function() {
         { html: '<p>As\u00ed que solo quer\u00eda que supieras que me importas, que disfruto cada conversaci\u00f3n contigo, y que me gustar\u00eda seguir conoci\u00e9ndote... en persona, sin pantallas de por medio \ud83d\ude0a</p>' }
     ];
 
-    var meyliLines = [
-        [{x:0,y:2},{x:0,y:0}], [{x:0,y:0},{x:0.5,y:1}], [{x:0.5,y:1},{x:1,y:0}], [{x:1,y:0},{x:1,y:2}],
-        [{x:1.5,y:0},{x:2.5,y:0}], [{x:1.5,y:0},{x:1.5,y:1}], [{x:1.5,y:1},{x:2.3,y:1}], [{x:1.5,y:1},{x:1.5,y:2}], [{x:1.5,y:2},{x:2.5,y:2}],
-        [{x:3,y:0},{x:3.5,y:1}], [{x:4,y:0},{x:3.5,y:1}], [{x:3.5,y:1},{x:3.5,y:2}],
-        [{x:4.5,y:0},{x:4.5,y:2}], [{x:4.5,y:2},{x:5.5,y:2}],
-        [{x:6,y:0},{x:6,y:2}]
-    ];
+    // Cada letra se construye con segmentos para conservar el cierre de estrellas.
+    var nameGlyphs = {
+        A: [[[0,2],[0.5,0]], [[0.5,0],[1,2]], [[0.25,1],[0.75,1]]],
+        L: [[[0,0],[0,2]], [[0,2],[1,2]]],
+        E: [[[0,0],[0,2]], [[0,0],[1,0]], [[0,1],[0.8,1]], [[0,2],[1,2]]],
+        X: [[[0,0],[1,2]], [[1,0],[0,2]]],
+        N: [[[0,2],[0,0]], [[0,0],[1,2]], [[1,2],[1,0]]],
+        D: [[[0,0],[0,2]], [[0,0],[0.7,0]], [[0.7,0],[1,0.5]], [[1,0.5],[1,1.5]], [[1,1.5],[0.7,2]], [[0.7,2],[0,2]]],
+        R: [[[0,2],[0,0]], [[0,0],[0.8,0]], [[0.8,0],[1,0.5]], [[1,0.5],[0.8,1]], [[0.8,1],[0,1]], [[0.5,1],[1,2]]]
+    };
+    var constellationName = 'Alexandra';
+    var nameWidth = (constellationName.length - 1) * 1.5 + 1;
+    var alexandraLines = [];
+    constellationName.toUpperCase().split('').forEach(function(letter, index) {
+        nameGlyphs[letter].forEach(function(segment) {
+            alexandraLines.push(segment.map(function(point) {
+                return { x: point[0] + index * 1.5, y: point[1] };
+            }));
+        });
+    });
 
     function resize() {
         var rect = canvas.getBoundingClientRect();
@@ -134,7 +147,7 @@ document.addEventListener('DOMContentLoaded', function() {
             ctx.stroke();
         }
 
-        if (!showMeyliName) {
+        if (!showAlexandraName) {
             if (currentNodeIndex > 0) {
                 ctx.strokeStyle = "rgba(255,215,0,0.15)";
                 ctx.lineWidth = 6;
@@ -155,36 +168,36 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         } else {
             if (nameAlpha < 1) nameAlpha += 0.006; // Un poco mas lento
-            var scale = Math.min(width / 8, 80);
-            var totalW = 6 * scale;
+            var scale = Math.min(width / (nameWidth + 2), height / 6, 60);
+            var totalW = nameWidth * scale;
             var sx = (width - totalW) / 2;
             var sy = height / 2 - scale;
 
             ctx.strokeStyle = "rgba(255,75,130," + (nameAlpha * 0.15) + ")";
             ctx.lineWidth = 8;
             ctx.beginPath();
-            for (i = 0; i < meyliLines.length; i++) {
-                ctx.moveTo(sx + meyliLines[i][0].x * scale, sy + meyliLines[i][0].y * scale);
-                ctx.lineTo(sx + meyliLines[i][1].x * scale, sy + meyliLines[i][1].y * scale);
+            for (i = 0; i < alexandraLines.length; i++) {
+                ctx.moveTo(sx + alexandraLines[i][0].x * scale, sy + alexandraLines[i][0].y * scale);
+                ctx.lineTo(sx + alexandraLines[i][1].x * scale, sy + alexandraLines[i][1].y * scale);
             }
             ctx.stroke();
 
             ctx.strokeStyle = "rgba(255,75,130," + (nameAlpha * 0.8) + ")";
             ctx.lineWidth = 2;
             ctx.beginPath();
-            for (i = 0; i < meyliLines.length; i++) {
-                ctx.moveTo(sx + meyliLines[i][0].x * scale, sy + meyliLines[i][0].y * scale);
-                ctx.lineTo(sx + meyliLines[i][1].x * scale, sy + meyliLines[i][1].y * scale);
+            for (i = 0; i < alexandraLines.length; i++) {
+                ctx.moveTo(sx + alexandraLines[i][0].x * scale, sy + alexandraLines[i][0].y * scale);
+                ctx.lineTo(sx + alexandraLines[i][1].x * scale, sy + alexandraLines[i][1].y * scale);
             }
             ctx.stroke();
 
             ctx.fillStyle = "rgba(255,255,255," + nameAlpha + ")";
-            for (i = 0; i < meyliLines.length; i++) {
+            for (i = 0; i < alexandraLines.length; i++) {
                 ctx.beginPath();
-                ctx.arc(sx + meyliLines[i][0].x * scale, sy + meyliLines[i][0].y * scale, 3, 0, Math.PI * 2);
+                ctx.arc(sx + alexandraLines[i][0].x * scale, sy + alexandraLines[i][0].y * scale, 3, 0, Math.PI * 2);
                 ctx.fill();
                 ctx.beginPath();
-                ctx.arc(sx + meyliLines[i][1].x * scale, sy + meyliLines[i][1].y * scale, 3, 0, Math.PI * 2);
+                ctx.arc(sx + alexandraLines[i][1].x * scale, sy + alexandraLines[i][1].y * scale, 3, 0, Math.PI * 2);
                 ctx.fill();
             }
         }
@@ -239,7 +252,7 @@ document.addEventListener('DOMContentLoaded', function() {
             div.style.top = y + "px";
             (function(idx, posX, posY) {
                 div.addEventListener('click', function() {
-                    if (idx <= currentNodeIndex && !showMeyliName) {
+                    if (idx <= currentNodeIndex && !showAlexandraName) {
                         if (idx === 0) {
                             var guide = document.getElementById('click-guide');
                             if (guide) guide.style.opacity = "0";
@@ -334,8 +347,8 @@ document.addEventListener('DOMContentLoaded', function() {
                         });
                     }
                     
-                    // 3. Mostrar el nombre de Meyli
-                    showMeyliName = true;
+                    // 3. Mostrar el nombre de Alexandra
+                    showAlexandraName = true;
                 }, 1200); // Esperar a que se junten
             }
         }, 1000);
