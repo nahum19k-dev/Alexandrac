@@ -39,7 +39,7 @@ La implementación está en la carpeta local `telegram-service`, que tiene su pr
 - Sesiones de recogida firmadas, validación de eventos y límites de frecuencia.
 - Base de datos con sesiones, recorridos, eventos y cola de notificaciones. No hay un endpoint público para leer el historial.
 
-El servicio nace privado. Su apertura para recibir eventos de visitantes está pendiente de la autorización del usuario; mantenerlo privado impide que GitHub Pages envíe métricas anónimas. No anunciar los avisos como operativos antes de verificar ese acceso y un envío real a Telegram.
+El usuario autorizó abrir el receptor para recibir eventos desde GitHub Pages. El servicio tiene acceso público, pero su API solo ofrece recogida de eventos y comprobación de estado; no publica el historial ni las credenciales. Antes de anunciar avisos operativos, comprobar el envío real y el estado de la cola de Telegram.
 
 ## Pruebas
 
