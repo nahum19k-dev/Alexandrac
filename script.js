@@ -2,6 +2,10 @@ document.addEventListener('DOMContentLoaded', function () {
     'use strict';
     var canvas = document.getElementById('star-canvas');
     var ctx = canvas.getContext('2d');
+    var metrics = window.AlexandraMetrics || {
+        start: function () {}, read: function () {}, next: function () {},
+        photo: function () {}, photoClosed: function () {}, complete: function () {}
+    };
     var landing = document.getElementById('landing-screen');
     var journey = document.getElementById('constellation-screen');
     var modal = document.getElementById('content-modal');
@@ -257,7 +261,7 @@ document.addEventListener('DOMContentLoaded', function () {
             var hint = document.createElement('span');
             hint.className = 'photo-hint'; hint.textContent = 'Toca para ver la foto';
             photoButton.appendChild(hint);
-            photoButton.addEventListener('click', function () { photoViewer.showModal(); });
+            photoButton.addEventListener('click', function () { photoViewer.showModal(); metrics.photo(); });
         }
         nextBtn.innerHTML = (index === 5 ? 'Ver el cielo' : 'Siguiente') + ' <span aria-hidden="true">&#8594;</span>';
         card.scrollTop = 0;
@@ -266,6 +270,7 @@ document.addEventListener('DOMContentLoaded', function () {
             document.body.classList.remove('is-entering');
             document.body.classList.add('is-reading');
             modal.inert = false; modal.classList.remove('hidden');
+            metrics.read(index);
             (photoButton || nextBtn).focus({ preventScroll: true });
         }, reducedMotion ? 0 : 700);
         progress.textContent = '0' + (index + 1) + ' / 06';
@@ -273,6 +278,7 @@ document.addEventListener('DOMContentLoaded', function () {
     nextBtn.addEventListener('click', function () {
         if (state !== 'reading') return;
         clearTimeout(focusTimer);
+        metrics.next();
         state = 'transition'; nextBtn.blur();
         modal.inert = true; modal.classList.add('hidden');
         document.body.classList.remove('is-reading'); cameraTarget = 0;
@@ -295,6 +301,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
     document.getElementById('close-photo').addEventListener('click', function () { photoViewer.close(); });
+    photoViewer.addEventListener('close', function () { metrics.photoClosed(); });
     photoViewer.addEventListener('keydown', function (event) {
         if (event.key === 'Escape') { event.preventDefault(); photoViewer.close(); }
     });
@@ -302,6 +309,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (event.target === photoViewer) photoViewer.close();
     });
     function startEnding() {
+        metrics.complete();
         state = 'ending'; finaleTime = 0; nameParticles = []; route = null;
         burstParticles = [];
         for (var k = 0; k < 130; k++) {
@@ -323,6 +331,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
     function beginJourney() {
+        metrics.start();
         clearTimeout(introTimer);
         state = 'exploring'; current = 0; visited.clear(); route = null;
         finale.hidden = true; landing.hidden = true; landing.classList.remove('active');
