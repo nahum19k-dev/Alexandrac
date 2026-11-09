@@ -27,6 +27,8 @@ document.addEventListener('DOMContentLoaded', function () {
     var state = 'landing', current = 0, reading = 0, visited = new Set();
     var lastTime = 0, skyTime = 0, finaleTime = 0, nextMeteor = 9;
     var frameId = null, audioFadeId = null, focusTimer = null;
+    var lastPaintTime = 0, resizeFrame = null, mobileEffects = false;
+    var glowSprites = {};
     var camera = 0, cameraTarget = 0;
     var cameraFocus = { x: 0.5, y: 0.5 };
     var burstParticles = [];
@@ -71,20 +73,42 @@ document.addEventListener('DOMContentLoaded', function () {
     function resize() {
         width = window.innerWidth;
         height = window.innerHeight;
-        var dpr = Math.min(window.devicePixelRatio || 1, 2);
-        canvas.width = Math.round(width * dpr);
-        canvas.height = Math.round(height * dpr);
+        mobileEffects = window.matchMedia('(max-width: 700px), (pointer: coarse)').matches;
+        var dpr = Math.min(window.devicePixelRatio || 1, mobileEffects ? 1.25 : 2);
+        var pixelWidth = Math.round(width * dpr), pixelHeight = Math.round(height * dpr);
+        if (canvas.width !== pixelWidth) canvas.width = pixelWidth;
+        if (canvas.height !== pixelHeight) canvas.height = pixelHeight;
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-        if (!stars.length) {
-            for (var i = 0; i < 260; i++) {
+        var starCount = mobileEffects ? 110 : 260;
+        if (stars.length !== starCount) {
+            stars = [];
+            var palette = ['#c6e5ff', '#78e1ff', '#c1a1ff', '#f5a4df', '#ffe1ab'];
+            palette.forEach(function (color) {
+                if (glowSprites[color]) return;
+                var sprite = document.createElement('canvas');
+                sprite.width = sprite.height = 32;
+                var brush = sprite.getContext('2d');
+                var glow = brush.createRadialGradient(16, 16, 0, 16, 16, 16);
+                glow.addColorStop(0, '#ffffff');
+                glow.addColorStop(0.12, color);
+                glow.addColorStop(0.3, color + 'a0');
+                glow.addColorStop(1, color + '00');
+                brush.fillStyle = glow; brush.fillRect(0, 0, 32, 32);
+                glowSprites[color] = sprite;
+            });
+            for (var i = 0; i < starCount; i++) {
                 var depth = Math.random();
                 stars.push({ x: Math.random(), y: Math.random(), depth: depth,
                     r: 0.55 + depth * 2.15, phase: Math.random() * Math.PI * 2,
-                    speed: 0.25 + Math.random() * 0.65, warm: Math.random() > 0.78 });
+                    speed: 0.25 + Math.random() * 0.65,
+                    sprite: glowSprites[palette[Math.floor(Math.random() * palette.length)]] });
             }
         }
     }
-    window.addEventListener('resize', resize);
+    window.addEventListener('resize', function () {
+        if (resizeFrame !== null) return;
+        resizeFrame = requestAnimationFrame(function () { resizeFrame = null; resize(); });
+    }, { passive: true });
     window.addEventListener('pointermove', function (event) {
         pointer.x = event.clientX / width - 0.5;
         pointer.y = event.clientY / height - 0.5;
@@ -92,13 +116,19 @@ document.addEventListener('DOMContentLoaded', function () {
     document.addEventListener('pointerleave', function () { pointer.x = pointer.y = 0; });
 
     function draw(time) {
-        var dt = Math.min((time - (lastTime || time)) / 1000, 0.05);
+        var interval = mobileEffects ? (state === 'reading' ? 50 : 1000 / 30) : 1000 / 60;
+        if (time - lastPaintTime < interval - 0.5) {
+            frameId = requestAnimationFrame(draw);
+            return;
+        }
+        lastPaintTime = time - ((time - lastPaintTime) % interval);
+        var dt = Math.min((time - (lastTime || time)) / 1000, 0.25);
         lastTime = time;
         skyTime += dt;
         ctx.clearRect(0, 0, width, height);
         var ease = 1 - Math.exp(-dt * 3);
-        pointer.smoothX += ((reducedMotion ? 0 : pointer.x) - pointer.smoothX) * ease;
-        pointer.smoothY += ((reducedMotion ? 0 : pointer.y) - pointer.smoothY) * ease;
+        pointer.smoothX += ((reducedMotion || mobileEffects ? 0 : pointer.x) - pointer.smoothX) * ease;
+        pointer.smoothY += ((reducedMotion || mobileEffects ? 0 : pointer.y) - pointer.smoothY) * ease;
         camera += ((reducedMotion ? 0 : cameraTarget) - camera) * ease;
         stars.forEach(function (star) {
             var drift = reducedMotion ? 0 : skyTime * (0.5 + star.depth * 1.2);
@@ -107,16 +137,11 @@ document.addEventListener('DOMContentLoaded', function () {
             x += pointer.smoothX * star.depth * 22 + (x - width * cameraFocus.x) * camera * star.depth;
             y += pointer.smoothY * star.depth * 16 + (y - height * cameraFocus.y) * camera * star.depth;
             var alpha = 0.22 + star.depth * 0.4 + (reducedMotion ? 0.1 : Math.sin(skyTime * star.speed + star.phase) * 0.16);
-            ctx.fillStyle = 'rgba(' + (star.warm ? '237,211,168,' : '215,228,246,') + alpha + ')';
-            if (star.depth > 0.9) {
-                ctx.shadowColor = star.warm ? '#e9cf9f' : '#bfd7ff';
-                ctx.shadowBlur = 7;
-            }
-            ctx.beginPath();
-            ctx.arc(x, y, star.r, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.shadowBlur = 0;
+            var size = star.r * 6;
+            ctx.globalAlpha = alpha;
+            ctx.drawImage(star.sprite, x - size / 2, y - size / 2, size, size);
         });
+        ctx.globalAlpha = 1;
         if (!reducedMotion && skyTime > nextMeteor) {
             meteors.push({ x: width * (0.3 + Math.random() * 0.6), y: height * Math.random() * 0.3, life: 1 });
             nextMeteor = skyTime + 12 + Math.random() * 14;
@@ -312,7 +337,7 @@ document.addEventListener('DOMContentLoaded', function () {
         metrics.complete();
         state = 'ending'; finaleTime = 0; nameParticles = []; route = null;
         burstParticles = [];
-        for (var k = 0; k < 130; k++) {
+        for (var k = 0; k < (mobileEffects ? 72 : 130); k++) {
             burstParticles.push({ angle: Math.random() * Math.PI * 2,
                 speed: (0.1 + Math.random() * 0.55) * Math.min(width, height),
                 r: 1 + Math.random() * 2.5,
