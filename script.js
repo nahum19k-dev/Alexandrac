@@ -31,7 +31,7 @@ document.addEventListener('DOMContentLoaded', function () {
     var glowSprites = {};
     var camera = 0, cameraTarget = 0;
     var cameraFocus = { x: 0.5, y: 0.5 };
-    var burstParticles = [], nameLinks = [];
+    var burstParticles = [];
     var route = null;
     var introTimer = null;
     var chapterTitles = ['Una coincidencia', 'Tu mirada', 'Lo que admiro de ti', 'Sin mirar el reloj', 'Pequeños recuerdos', 'Lo que sigue'];
@@ -44,66 +44,30 @@ document.addEventListener('DOMContentLoaded', function () {
         { html: '<p>Quién iba a decir que, entre las cosas de todos los días en el trabajo, iba a encontrar una mirada como la tuya. Ahora hay conversaciones y pequeños momentos que le dan otro encanto a coincidir contigo, Alexandra.</p><p>Lo curioso es que todo empezó con algo tan sencillo como mirarnos.</p><p>Quizá lo más bonito de coincidir contigo todavía esté por pasar.</p>' }
     ];
 
+    var nameGlyphs = {
+        A: [[[0,2],[0.5,0]], [[0.5,0],[1,2]], [[0.25,1],[0.75,1]]],
+        L: [[[0,0],[0,2]], [[0,2],[1,2]]],
+        E: [[[0,0],[0,2]], [[0,0],[1,0]], [[0,1],[0.8,1]], [[0,2],[1,2]]],
+        X: [[[0,0],[1,2]], [[1,0],[0,2]]],
+        N: [[[0,2],[0,0]], [[0,0],[1,2]], [[1,2],[1,0]]],
+        D: [[[0,0],[0,2]], [[0,0],[0.7,0]], [[0.7,0],[1,0.5]], [[1,0.5],[1,1.5]], [[1,1.5],[0.7,2]], [[0.7,2],[0,2]]],
+        R: [[[0,2],[0,0]], [[0,0],[0.8,0]], [[0.8,0],[1,0.5]], [[1,0.5],[0.8,1]], [[0.8,1],[0,1]], [[0.5,1],[1,2]]]
+    };
     var constellationName = 'Alexandra';
-    var nameDesign = null;
-    if (document.fonts) document.fonts.load('700 220px "Dancing Script"').catch(function () {});
-
-    function createNameDesign() {
-        var mask = document.createElement('canvas');
-        mask.width = 1200; mask.height = 360;
-        var brush = mask.getContext('2d', { willReadFrequently: true });
-        var family = document.fonts && document.fonts.check('700 220px "Dancing Script"') ? '"Dancing Script", cursive' : 'cursive';
-        var fontSize = 240;
-        brush.font = '700 ' + fontSize + 'px ' + family;
-        fontSize *= Math.min(1, (mask.width - 90) / brush.measureText(constellationName).width);
-        brush.font = '700 ' + fontSize + 'px ' + family;
-        var bounds = brush.measureText(constellationName);
-        var ascent = bounds.actualBoundingBoxAscent || fontSize * 0.8;
-        var descent = bounds.actualBoundingBoxDescent || fontSize * 0.2;
-        var inkWidth = bounds.actualBoundingBoxLeft + bounds.actualBoundingBoxRight || bounds.width;
-        brush.textAlign = 'center';
-        // The font is only a hidden guide for the star destinations, never a visible text layer.
-        brush.fillStyle = '#ffffff';
-        brush.fillText(constellationName, mask.width / 2, mask.height / 2 + (ascent - descent) / 2);
-        var pixels = brush.getImageData(0, 0, mask.width, mask.height).data;
-        var alpha = new Uint8Array(mask.width * mask.height);
-        for (var a = 0; a < alpha.length; a++) alpha[a] = pixels[a * 4 + 3];
-        var points = [];
-        for (var y = 0; y < mask.height; y += 4) {
-            for (var x = 0; x < mask.width; x += 4) {
-                if (pixels[(y * mask.width + x) * 4 + 3] > 210) points.push({ x: x - mask.width / 2, y: y - mask.height / 2 });
-            }
-        }
-        return { points: points, width: inkWidth, height: ascent + descent,
-            alpha: alpha, maskWidth: mask.width, maskHeight: mask.height };
-    }
-
-    function connectNameStars() {
-        nameLinks = [];
-        nameParticles.forEach(function (star, index) {
-            var nearby = [];
-            for (var j = index + 1; j < nameParticles.length; j++) {
-                var other = nameParticles[j];
-                var distance = Math.hypot(other.tx - star.tx, other.ty - star.ty);
-                if (distance > 0 && distance < 40) nearby.push({ star: other, distance: distance });
-            }
-            nearby.sort(function (a, b) { return a.distance - b.distance; });
-            var connected = 0;
-            for (var n = 0; n < nearby.length && connected < 3; n++) {
-                var target = nearby[n].star, samples = Math.ceil(nearby[n].distance / 3), inside = true;
-                for (var s = 1; s < samples; s++) {
-                    var x = Math.round(star.tx + (target.tx - star.tx) * s / samples + nameDesign.maskWidth / 2);
-                    var y = Math.round(star.ty + (target.ty - star.ty) * s / samples + nameDesign.maskHeight / 2);
-                    if (nameDesign.alpha[y * nameDesign.maskWidth + x] < 50) { inside = false; break; }
-                }
-                if (inside) { nameLinks.push([star, target]); connected++; }
-            }
+    var nameWidth = (constellationName.length - 1) * 1.5 + 1;
+    var alexandraLines = [];
+    constellationName.toUpperCase().split('').forEach(function(letter, index) {
+        nameGlyphs[letter].forEach(function(segment) {
+            alexandraLines.push(segment.map(function(point) {
+                return { x: point[0] + index * 1.5, y: point[1] };
+            }));
         });
-    }
+    });
+
 
     function nameLayout() {
-        var scale = Math.min(width * 0.92 / nameDesign.width, Math.min(height * 0.22, 210) / nameDesign.height);
-        return { scale: scale, x: width / 2, y: height * 0.4 };
+        var scale = Math.min(width / (nameWidth + 2.5), height / 7, 60);
+        return { scale: scale, x: (width - nameWidth * scale) / 2, y: height * 0.43 - scale };
     }
 
     function resize() {
@@ -212,8 +176,8 @@ document.addEventListener('DOMContentLoaded', function () {
             finaleTime += dt;
             var gathering = Math.min(finaleTime / 1.8, 1);
             var gatherEase = gathering * gathering * (3 - 2 * gathering);
-            // The very same collision particles gather into the handwritten constellation.
-            var t = reducedMotion ? 1 : Math.max(0, Math.min((finaleTime - 4) / 3, 1));
+            var t = reducedMotion ? 1 : Math.max(0, Math.min((finaleTime - 2.35) / 2.8, 1));
+            var eased = t * t * (3 - 2 * t);
             var layout = nameLayout();
             if (!reducedMotion && finaleTime < 1.8) {
                 nodes.forEach(function (node) {
@@ -241,33 +205,27 @@ document.addEventListener('DOMContentLoaded', function () {
                     var distance = p.speed * (1 - Math.exp(-burstAge * 1.5));
                     var x = width / 2 + Math.cos(p.angle) * distance;
                     var y = height * 0.43 + Math.sin(p.angle) * distance;
-                    ctx.fillStyle = 'rgba(' + p.color + ',' + (0.8 + 0.2 * (1 - burstAge / 2.2)) + ')';
+                    ctx.fillStyle = 'rgba(' + p.color + ',' + Math.max(0, 1 - burstAge / 2.2) + ')';
                     ctx.beginPath(); ctx.arc(x, y, p.r, 0, Math.PI * 2); ctx.fill();
                 });
             }
-            if (reducedMotion || finaleTime >= 4) nameParticles.forEach(function (p) {
-                var local = Math.max(0, Math.min((t - p.delay) / (1 - p.delay), 1));
-                var eased = 1 - Math.pow(1 - local, 3);
-                var spread = Math.min(width, height) * p.spread;
-                var fromX = width / 2 + Math.cos(p.angle) * spread;
-                var fromY = height * 0.43 + Math.sin(p.angle) * spread;
-                var x = fromX * (1 - eased) + (layout.x + p.tx * layout.scale) * eased;
-                var y = fromY * (1 - eased) + (layout.y + p.ty * layout.scale) * eased;
-                ctx.fillStyle = 'rgba(' + p.color + ',' + (0.8 + Math.sin(skyTime + p.phase) * 0.2) + ')';
+            if (t > 0) nameParticles.forEach(function (p) {
+                var x = width / 2 * (1 - eased) + (layout.x + p.tx * layout.scale) * eased;
+                var y = height * 0.43 * (1 - eased) + (layout.y + p.ty * layout.scale) * eased;
+                ctx.fillStyle = 'rgba(244,224,185,' + (0.5 + Math.sin(skyTime + p.phase) * 0.2) + ')';
                 ctx.beginPath(); ctx.arc(x, y, p.r, 0, Math.PI * 2); ctx.fill();
             });
-            if (t === 1) {
-                var unionAlpha = reducedMotion ? 1 : Math.min(Math.max((finaleTime - 7) / 0.65, 0), 1);
-                ctx.strokeStyle = 'rgba(230,217,255,' + unionAlpha * 0.6 + ')';
-                ctx.lineWidth = mobileEffects ? 0.7 : 1;
+            if (t > 0.55) {
+                ctx.strokeStyle = 'rgba(227,204,165,' + Math.min((t - 0.55) / 0.45, 1) * 0.55 + ')';
+                ctx.lineWidth = 0.8;
                 ctx.beginPath();
-                nameLinks.forEach(function (link) {
-                    ctx.moveTo(layout.x + link[0].tx * layout.scale, layout.y + link[0].ty * layout.scale);
-                    ctx.lineTo(layout.x + link[1].tx * layout.scale, layout.y + link[1].ty * layout.scale);
+                alexandraLines.forEach(function (segment) {
+                    ctx.moveTo(layout.x + segment[0].x * layout.scale, layout.y + segment[0].y * layout.scale);
+                    ctx.lineTo(layout.x + segment[1].x * layout.scale, layout.y + segment[1].y * layout.scale);
                 });
                 ctx.stroke();
             }
-            if ((reducedMotion || finaleTime >= 7.65) && finale.hidden) {
+            if (t === 1 && finale.hidden) {
                 finale.hidden = false;
                 document.getElementById('replay-btn').focus({ preventScroll: true });
             }
@@ -379,20 +337,23 @@ document.addEventListener('DOMContentLoaded', function () {
         metrics.complete();
         state = 'ending'; finaleTime = 0; nameParticles = []; route = null;
         burstParticles = [];
+        for (var k = 0; k < (mobileEffects ? 72 : 130); k++) {
+            burstParticles.push({ angle: Math.random() * Math.PI * 2,
+                speed: (0.1 + Math.random() * 0.55) * Math.min(width, height),
+                r: 1 + Math.random() * 2.5,
+                color: Math.random() > 0.5 ? '255,229,178' : '241,193,213' });
+        }
         guide.style.opacity = '0'; progress.textContent = 'Cada encuentro dibuja algo distinto';
         nodes.forEach(function (node) { node.el.disabled = true; node.el.classList.add('departing'); });
-        if (!nameDesign) nameDesign = createNameDesign();
-        var count = Math.min(nameDesign.points.length, mobileEffects ? 260 : 520);
-        for (var j = 0; j < count; j++) {
-            var point = nameDesign.points[Math.floor(j * nameDesign.points.length / count)];
-            var radius = 0.1 + Math.random() * 0.55;
-            var particle = { tx: point.x, ty: point.y, angle: Math.random() * Math.PI * 2,
-                speed: radius * Math.min(width, height), spread: radius * (1 - Math.exp(-2.2 * 1.5)),
-                delay: Math.random() * 0.18, r: 1.1 + Math.random() * 1.2, phase: Math.random() * 6,
-                color: Math.random() > 0.5 ? '255,229,178' : '241,193,213' };
-            nameParticles.push(particle); burstParticles.push(particle);
-        }
-        connectNameStars();
+        alexandraLines.forEach(function (segment, index) {
+            for (var j = 0; j <= 5; j++) {
+                var f = j / 5;
+                nameParticles.push({
+                    tx: segment[0].x + (segment[1].x - segment[0].x) * f,
+                    ty: segment[0].y + (segment[1].y - segment[0].y) * f,
+                    r: j === 0 || j === 5 ? 2.3 : 1.1, phase: Math.random() * 6 });
+            }
+        });
     }
     function beginJourney() {
         metrics.start();
