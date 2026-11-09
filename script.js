@@ -44,30 +44,41 @@ document.addEventListener('DOMContentLoaded', function () {
         { html: '<p>Quién iba a decir que, entre las cosas de todos los días en el trabajo, iba a encontrar una mirada como la tuya. Ahora hay conversaciones y pequeños momentos que le dan otro encanto a coincidir contigo, Alexandra.</p><p>Lo curioso es que todo empezó con algo tan sencillo como mirarnos.</p><p>Quizá lo más bonito de coincidir contigo todavía esté por pasar.</p>' }
     ];
 
-    var nameGlyphs = {
-        A: [[[0,2],[0.5,0]], [[0.5,0],[1,2]], [[0.25,1],[0.75,1]]],
-        L: [[[0,0],[0,2]], [[0,2],[1,2]]],
-        E: [[[0,0],[0,2]], [[0,0],[1,0]], [[0,1],[0.8,1]], [[0,2],[1,2]]],
-        X: [[[0,0],[1,2]], [[1,0],[0,2]]],
-        N: [[[0,2],[0,0]], [[0,0],[1,2]], [[1,2],[1,0]]],
-        D: [[[0,0],[0,2]], [[0,0],[0.7,0]], [[0.7,0],[1,0.5]], [[1,0.5],[1,1.5]], [[1,1.5],[0.7,2]], [[0.7,2],[0,2]]],
-        R: [[[0,2],[0,0]], [[0,0],[0.8,0]], [[0.8,0],[1,0.5]], [[1,0.5],[0.8,1]], [[0.8,1],[0,1]], [[0.5,1],[1,2]]]
-    };
     var constellationName = 'Alexandra';
-    var nameWidth = (constellationName.length - 1) * 1.5 + 1;
-    var alexandraLines = [];
-    constellationName.toUpperCase().split('').forEach(function(letter, index) {
-        nameGlyphs[letter].forEach(function(segment) {
-            alexandraLines.push(segment.map(function(point) {
-                return { x: point[0] + index * 1.5, y: point[1] };
-            }));
-        });
-    });
+    var nameDesign = null;
+    if (document.fonts) document.fonts.load('700 220px "Dancing Script"').catch(function () {});
 
+    function createNameDesign() {
+        var mask = document.createElement('canvas');
+        mask.width = 1200; mask.height = 360;
+        var brush = mask.getContext('2d', { willReadFrequently: true });
+        var family = document.fonts && document.fonts.check('700 220px "Dancing Script"') ? '"Dancing Script", cursive' : 'cursive';
+        var fontSize = 240;
+        brush.font = '700 ' + fontSize + 'px ' + family;
+        fontSize *= Math.min(1, (mask.width - 90) / brush.measureText(constellationName).width);
+        brush.font = '700 ' + fontSize + 'px ' + family;
+        var bounds = brush.measureText(constellationName);
+        var ascent = bounds.actualBoundingBoxAscent || fontSize * 0.8;
+        var descent = bounds.actualBoundingBoxDescent || fontSize * 0.2;
+        var inkWidth = bounds.actualBoundingBoxLeft + bounds.actualBoundingBoxRight || bounds.width;
+        brush.textAlign = 'center';
+        var color = brush.createLinearGradient(150, 0, mask.width - 150, 0);
+        color.addColorStop(0, '#b6eaff'); color.addColorStop(0.5, '#ffffff'); color.addColorStop(1, '#e4baff');
+        brush.fillStyle = color; brush.shadowColor = '#99caff'; brush.shadowBlur = 12;
+        brush.fillText(constellationName, mask.width / 2, mask.height / 2 + (ascent - descent) / 2);
+        var pixels = brush.getImageData(0, 0, mask.width, mask.height).data;
+        var points = [];
+        for (var y = 0; y < mask.height; y += 4) {
+            for (var x = 0; x < mask.width; x += 4) {
+                if (pixels[(y * mask.width + x) * 4 + 3] > 210) points.push({ x: x - mask.width / 2, y: y - mask.height / 2 });
+            }
+        }
+        return { image: mask, points: points, width: inkWidth, height: ascent + descent };
+    }
 
     function nameLayout() {
-        var scale = Math.min(width / (nameWidth + 2.5), height / 7, 60);
-        return { scale: scale, x: (width - nameWidth * scale) / 2, y: height * 0.43 - scale };
+        var scale = Math.min(width * 0.92 / nameDesign.width, Math.min(height * 0.22, 210) / nameDesign.height);
+        return { scale: scale, x: width / 2, y: height * 0.4 };
     }
 
     function resize() {
@@ -176,8 +187,8 @@ document.addEventListener('DOMContentLoaded', function () {
             finaleTime += dt;
             var gathering = Math.min(finaleTime / 1.8, 1);
             var gatherEase = gathering * gathering * (3 - 2 * gathering);
-            var t = reducedMotion ? 1 : Math.max(0, Math.min((finaleTime - 2.35) / 2.8, 1));
-            var eased = t * t * (3 - 2 * t);
+            // Finish the explosion first. All particles settle before the lettering appears.
+            var t = reducedMotion ? 1 : Math.max(0, Math.min((finaleTime - 4) / 3, 1));
             var layout = nameLayout();
             if (!reducedMotion && finaleTime < 1.8) {
                 nodes.forEach(function (node) {
@@ -210,22 +221,24 @@ document.addEventListener('DOMContentLoaded', function () {
                 });
             }
             if (t > 0) nameParticles.forEach(function (p) {
-                var x = width / 2 * (1 - eased) + (layout.x + p.tx * layout.scale) * eased;
-                var y = height * 0.43 * (1 - eased) + (layout.y + p.ty * layout.scale) * eased;
-                ctx.fillStyle = 'rgba(244,224,185,' + (0.5 + Math.sin(skyTime + p.phase) * 0.2) + ')';
+                var local = Math.max(0, Math.min((t - p.delay) / (1 - p.delay), 1));
+                var eased = 1 - Math.pow(1 - local, 3);
+                var spread = Math.min(width, height) * p.spread;
+                var fromX = width / 2 + Math.cos(p.angle) * spread;
+                var fromY = height * 0.43 + Math.sin(p.angle) * spread;
+                var x = fromX * (1 - eased) + (layout.x + p.tx * layout.scale) * eased;
+                var y = fromY * (1 - eased) + (layout.y + p.ty * layout.scale) * eased;
+                ctx.fillStyle = 'rgba(222,233,255,' + Math.min(t * 6, 1) * (0.6 + Math.sin(skyTime + p.phase) * 0.2) + ')';
                 ctx.beginPath(); ctx.arc(x, y, p.r, 0, Math.PI * 2); ctx.fill();
             });
-            if (t > 0.55) {
-                ctx.strokeStyle = 'rgba(227,204,165,' + Math.min((t - 0.55) / 0.45, 1) * 0.55 + ')';
-                ctx.lineWidth = 0.8;
-                ctx.beginPath();
-                alexandraLines.forEach(function (segment) {
-                    ctx.moveTo(layout.x + segment[0].x * layout.scale, layout.y + segment[0].y * layout.scale);
-                    ctx.lineTo(layout.x + segment[1].x * layout.scale, layout.y + segment[1].y * layout.scale);
-                });
-                ctx.stroke();
+            if (t === 1) {
+                ctx.globalAlpha = reducedMotion ? 1 : Math.min(Math.max((finaleTime - 7) / 0.65, 0), 1);
+                ctx.drawImage(nameDesign.image, layout.x - nameDesign.image.width * layout.scale / 2,
+                    layout.y - nameDesign.image.height * layout.scale / 2,
+                    nameDesign.image.width * layout.scale, nameDesign.image.height * layout.scale);
+                ctx.globalAlpha = 1;
             }
-            if (t === 1 && finale.hidden) {
+            if ((reducedMotion || finaleTime >= 7.65) && finale.hidden) {
                 finale.hidden = false;
                 document.getElementById('replay-btn').focus({ preventScroll: true });
             }
@@ -288,7 +301,7 @@ document.addEventListener('DOMContentLoaded', function () {
             photoButton.appendChild(hint);
             photoButton.addEventListener('click', function () { photoViewer.showModal(); metrics.photo(); });
         }
-        nextBtn.innerHTML = (index === 5 ? 'Ver el cielo' : 'Siguiente') + ' <span aria-hidden="true">&#8594;</span>';
+        nextBtn.innerHTML = (index === 5 ? 'Ver la constelaci\u00f3n' : 'Siguiente') + ' <span aria-hidden="true">&#8594;</span>';
         card.scrollTop = 0;
         focusTimer = setTimeout(function () {
             state = 'reading';
@@ -345,15 +358,15 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         guide.style.opacity = '0'; progress.textContent = 'Cada encuentro dibuja algo distinto';
         nodes.forEach(function (node) { node.el.disabled = true; node.el.classList.add('departing'); });
-        alexandraLines.forEach(function (segment, index) {
-            for (var j = 0; j <= 5; j++) {
-                var f = j / 5;
-                nameParticles.push({
-                    tx: segment[0].x + (segment[1].x - segment[0].x) * f,
-                    ty: segment[0].y + (segment[1].y - segment[0].y) * f,
-                    r: j === 0 || j === 5 ? 2.3 : 1.1, phase: Math.random() * 6 });
-            }
-        });
+        if (!nameDesign) nameDesign = createNameDesign();
+        var count = Math.min(nameDesign.points.length, mobileEffects ? 260 : 520);
+        for (var j = 0; j < count; j++) {
+            var point = nameDesign.points[Math.floor(j * nameDesign.points.length / count)];
+            var source = burstParticles[j % burstParticles.length];
+            nameParticles.push({ tx: point.x, ty: point.y, angle: source.angle,
+                spread: source.speed / Math.min(width, height) * (1 - Math.exp(-2.2 * 1.5)),
+                delay: Math.random() * 0.18, r: 1.1 + Math.random() * 1.2, phase: Math.random() * 6 });
+        }
     }
     function beginJourney() {
         metrics.start();
