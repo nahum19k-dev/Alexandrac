@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@500;600;700&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=5cad4cb">
+    <link rel="stylesheet" href="style.css?v=entrada-estrella-2">
 </head>
 <body>
     <div class="sky-atmosphere" aria-hidden="true"></div>
@@ -22,7 +22,16 @@
                 <span class="title-prelude">Para</span>
                 <h1 id="welcome-title" class="title">Alexandra</h1>
                 <p class="subtitle">Una constelaci&oacute;n de pensamientos para ti</p>
-                <button id="open-btn" class="primary-btn">Leer la carta <span aria-hidden="true">&#10022;</span></button>
+                <button id="open-btn" class="primary-btn">Leer la carta
+                    <span class="entry-star" aria-hidden="true">
+                        <svg viewBox="0 0 32 32" focusable="false">
+                            <defs><radialGradient id="entry-star-light"><stop stop-color="#fffdf1"/><stop offset=".5" stop-color="#ffe8ad"/><stop offset="1" stop-color="#a56b4c"/></radialGradient></defs>
+                            <path class="entry-star-shape" d="M16 2 C17.5 12 20 14.5 30 16 C20 17.5 17.5 20 16 30 C14.5 20 12 17.5 2 16 C12 14.5 14.5 12 16 2Z" fill="url(#entry-star-light)"/>
+                            <circle class="entry-spark spark-one" cx="27" cy="6" r="1.6" fill="#fff4cc"/>
+                            <circle class="entry-spark spark-two" cx="5" cy="26" r="1.2" fill="#fff4cc"/>
+                        </svg>
+                    </span>
+                </button>
             </div>
         </section>
 

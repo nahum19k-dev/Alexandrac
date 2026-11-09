@@ -26,12 +26,21 @@ main { position: relative; height: 100%; z-index: 3; }
 .welcome-stars i:nth-child(4) { right: 8%; top: 48%; animation-delay: -1s; }
 .welcome-stars i:nth-child(5) { right: 22%; top: 12%; animation-delay: -4s; }
 .welcome-stars i:nth-child(6) { right: 15%; top: 80%; animation-delay: -2.5s; width: 3px; height: 3px; }
+.welcome-stars i:nth-child(1)::before, .welcome-stars i:nth-child(4)::before { content: ''; position: absolute; width: 1px; height: 17px; top: -6px; left: 2px; background: linear-gradient(transparent, #ffe5b8, transparent); }
+.welcome-stars i:nth-child(1)::after, .welcome-stars i:nth-child(4)::after { content: ''; position: absolute; width: 17px; height: 1px; left: -6px; top: 2px; background: linear-gradient(90deg, transparent, #ffe5b8, transparent); }
+.welcome-stars::before { content: ''; position: absolute; top: 3%; left: 22%; width: 70px; height: 2px; border-radius: 50%; opacity: 0; background: linear-gradient(90deg, transparent, #f4dac6); box-shadow: 5px 0 10px #ffe1af66; animation: welcome-meteor 12s 2.4s ease-out infinite; }
 #landing-screen { transition: opacity .9s, transform 1.2s; }
 #landing-screen.opening { opacity: 0; transform: scale(1.1); pointer-events: none; }
 .primary-btn, .next-btn { display: inline-flex; align-items: center; justify-content: center; gap: 18px; min-height: 52px; padding: 14px 30px; color: #291b2c; border: 0; border-radius: 30px; background: #e2b1c0; font-size: .95rem; font-weight: 500; box-shadow: 0 5px 25px #b67c9d22; transition: background .3s, box-shadow .3s; }
 .primary-btn { margin-top: 38px; animation: arrive 1.3s 1.25s both; }
 .primary-btn:hover, .next-btn:hover { background: #f0c6d3; box-shadow: 0 6px 30px #b67c9d44; }
-.primary-btn span { color: #654052; font-size: 1.25rem; }
+.entry-star { position: relative; display: inline-flex; align-items: center; justify-content: center; flex: 0 0 30px; width: 30px; height: 30px; pointer-events: none; }
+.entry-star::before { content: ''; position: absolute; inset: -5px; border-radius: 50%; background: radial-gradient(circle, #fff1be66, transparent 70%); animation: entry-halo 4s ease-in-out infinite; }
+.entry-star svg { display: block; position: relative; width: 30px; height: 30px; overflow: visible; filter: drop-shadow(0 1px 2px #8c576344); }
+.entry-star-shape { transform-origin: 16px 16px; animation: entry-star-turn 6s ease-in-out infinite; }
+.entry-spark { animation: entry-twinkle 3.6s ease-in-out infinite; }
+.spark-two { animation-delay: -1.8s; }
+.primary-btn:hover .entry-star-shape, .primary-btn:focus-visible .entry-star-shape { filter: drop-shadow(0 0 3px #fff8d6); }
 .journey-header { position: absolute; top: max(28px, env(safe-area-inset-top)); left: 5vw; right: 5vw; pointer-events: none; animation: arrive 1.4s both; }
 .journey-signature { font: 500 2rem 'Dancing Script', cursive; color: #e5c6d3; }
 #nodes-container { position: absolute; inset: 0; transition: opacity .7s, transform .8s cubic-bezier(.3,.1,.2,1); }
@@ -122,6 +131,10 @@ main { position: relative; height: 100%; z-index: 3; }
 @keyframes ornament-draw { from { stroke-dashoffset: 300; opacity: 0; } to { stroke-dashoffset: 0; opacity: 1; } }
 @keyframes paragraph-arrive { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes photo-light { 0%, 15% { background-position: 100% 0; opacity: 0; } 25% { opacity: .8; } 38%, 100% { background-position: 0 0; opacity: 0; } }
+@keyframes welcome-meteor { 0% { opacity: 0; transform: translate(-30px, -15px) rotate(24deg); } 3% { opacity: .8; } 13% { opacity: 0; transform: translate(180px, 80px) rotate(24deg); } 100% { opacity: 0; transform: translate(180px, 80px) rotate(24deg); } }
+@keyframes entry-halo { 0%, 100% { opacity: .4; transform: scale(.85); } 50% { opacity: 1; transform: scale(1.15); } }
+@keyframes entry-star-turn { 0%, 100% { transform: rotate(-8deg) scale(.96); } 50% { transform: rotate(12deg) scale(1.08); } }
+@keyframes entry-twinkle { 0%, 100% { opacity: .2; } 45%, 60% { opacity: 1; } }
 @media (max-width: 600px) {
     .title { font-size: clamp(3.8rem, 16vw, 6rem); }
     .welcome-phrase { margin-bottom: 26px; font-size: 1.4rem; }
